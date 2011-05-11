@@ -1,6 +1,7 @@
 module Maze
 where
 
+import Array
 import Control.Arrow
 import Control.Monad.State
 import Data.Array.ST
@@ -8,10 +9,16 @@ import System.Random
 
 import Types
 
+{- A cell. The list contains the openings. -}
+newtype Cell = C [Cardinal] deriving (Show, Read)
+
+{- Simple type for maze. -}
+type Maze = Array Size Cell
+
 {-
 Generates the entire maze.
 -}
---genMaze :: Size -> State StdGen (GHC.Arr.Array Size Cell)
+genMaze :: Size -> State StdGen Maze
 genMaze s@(sx, sy) = do
   (ews, ups) <- gMP s
   return $ build sx sy ews ups
@@ -19,7 +26,7 @@ genMaze s@(sx, sy) = do
 {-
 Builds the maze using Sidewinder's algorithm.
 -}
---build :: Length -> Length -> [Point] -> [Point] -> GHC.Arr.Array Size Cell
+build :: Length -> Length -> [Point] -> [Point] -> Maze
 build sx sy ews ups = runSTArray $ do
   m <- newListArray ((1, 1), (sy, sx)) $ repeat $ C [E, W]
   -- 1. Block eastern walls (including first row's end)
@@ -33,22 +40,6 @@ build sx sy ews ups = runSTArray $ do
   -- 5. Open southwards
   mapM (openCell m S) $ map (second (\x -> x - 1)) ups
   return m
-
-{-
-Block one cell from the maze, represented as an array.
--}
--- blockCell :: (MArray a Cell m) => a Size Cell -> Cardinal -> Size -> m ()
-blockCell m d (x, y) = do
-  e <- readArray m (y, x)
-  writeArray m (y, x) $ block e d
-
-{-
-Open one cell from the maze, represented as an array.
--}
--- openCell :: (MArray a Cell m) => a Size Cell -> Cardinal -> Size -> m ()
-openCell m d (x, y) = do
-  e <- readArray m (y, x)
-  writeArray m (y, x) $ open e d
 
 {-
 Generates all the important points in the maze. Receives size of maze and
@@ -74,6 +65,22 @@ gRP c sx y
     up <- state $ randomR (1, len)
     (rx, ry) <- gRP (c + len) (sx - len) y
     return ((len + c, y):rx, (up + c, y):ry)
+
+{-
+Block one cell from the maze, represented as an array.
+-}
+-- blockCell :: (MArray a Cell m) => a Size Cell -> Cardinal -> Size -> m ()
+blockCell m d (x, y) = do
+  e <- readArray m (y, x)
+  writeArray m (y, x) $ block e d
+
+{-
+Open one cell from the maze, represented as an array.
+-}
+-- openCell :: (MArray a Cell m) => a Size Cell -> Cardinal -> Size -> m ()
+openCell m d (x, y) = do
+  e <- readArray m (y, x)
+  writeArray m (y, x) $ open e d
 
 {- Block a cell from one direction. -}
 block :: Cell -> Cardinal -> Cell
