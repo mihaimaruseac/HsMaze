@@ -2,7 +2,6 @@ module Maze
 where
 
 import Control.Arrow
-import Control.Monad
 import Control.Monad.State
 import Data.Array.ST
 import System.Random
@@ -75,4 +74,12 @@ gRP c sx y
     up <- state $ randomR (1, len)
     (rx, ry) <- gRP (c + len) (sx - len) y
     return ((len + c, y):rx, (up + c, y):ry)
+
+{- Block a cell from one direction. -}
+block :: Cell -> Cardinal -> Cell
+block (C l) x = C $ filter (/= x) l
+
+{- Open a cell to one direction. -}
+open :: Cell -> Cardinal -> Cell
+open (C l) x = C $ if x `elem` l then l else x : l
 
