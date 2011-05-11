@@ -1,7 +1,11 @@
 module Types
 where
 
-{- Size of maze -}
+{-
+Common types are presented in this file.
+-}
+
+{- Small typedefs -}
 type Length = Int
 type Coord = Int
 type Size = (Length, Length)
@@ -10,9 +14,6 @@ type Dir = Size
 
 {- The cardinal directions. -}
 data Cardinal = N | E | S | W deriving (Eq, Show, Read, Ord, Enum)
-
-{- A cell. The list contains the openings. -}
-newtype Cell = C [Cardinal] deriving (Show, Read)
 
 {-
 A plan to leave the maze. If the plane ends and the time is not spent, the
