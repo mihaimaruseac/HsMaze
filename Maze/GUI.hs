@@ -18,10 +18,13 @@ mazeGUI = do
   -- 2. Create the delete event allowing the app to finish
   window `on` deleteEvent $ liftIO mainQuit >> return False
   -- 3. Populate and set window's attributes.
+  pbuff <- pixbufNewFromFile "res/icon.png"
   populateWindow window
   set window
     [ windowDefaultWidth := 200
     , windowDefaultHeight := 200
+    , windowTitle := "Robot in a maze"
+    , windowIcon := Just pbuff
     ]
   -- 4. Show everything
   widgetShowAll window
