@@ -58,15 +58,16 @@ buildToolbar b = do
   tp <- tooltipsNew
   -- 3. Add widgets
   let addF = addBtnToToolbar tb tp -- helper function
-  addF stockNew "Starts a new population, with a new maze"
-  addF stockAbout "About this program"
+  bNew <- addF stockNew "Starts a new population, with a new maze"
+  bNew `onToolButtonClicked` onNew
+  bAbout <- addF stockAbout "About this program"
+  bAbout `onToolButtonClicked` onAbout
   addSeparator tb
   return ()
 
 {-
-Adds a button to a toolbar, setting the tooltip and the callback as given to
-this function. Returns the new button, in case of application wanting to do
-something more than this function does.
+Adds a button to a toolbar, setting the tooltip and look as given by the
+caller. Returns the new button, for callback setup or other uses.
 -}
 addBtnToToolbar :: Toolbar -> Tooltips -> StockId -> String -> IO ToolButton
 addBtnToToolbar tb tp s tpString = do
@@ -82,4 +83,14 @@ addSeparator :: Toolbar -> IO ()
 addSeparator tb = do
   s <- separatorToolItemNew
   toolbarInsert tb s $ -1
+
+{-
+Action to do when clicking the New button.
+-}
+onNew = undefined
+
+{-
+Action to do when clicking the about button.
+-}
+onAbout = undefined
 
