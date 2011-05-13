@@ -8,6 +8,9 @@ import Graphics.UI.Gtk
 Used to construct and update the GUI.
 -}
 
+gTITLE = "Robot in a maze"
+gLOGO = "res/icon.png"
+
 {-
 Main window loop.
 -}
@@ -18,12 +21,12 @@ mazeGUI = do
   -- 2. Create the delete event allowing the app to finish
   window `on` deleteEvent $ liftIO mainQuit >> return False
   -- 3. Populate and set window's attributes.
-  pbuff <- pixbufNewFromFile "res/icon.png"
+  pbuff <- pixbufNewFromFile gLOGO
   populateWindow window
   set window
     [ windowDefaultWidth := 200
     , windowDefaultHeight := 200
-    , windowTitle := "Robot in a maze"
+    , windowTitle := gTITLE
     , windowIcon := Just pbuff
     ]
   -- 4. Show everything
@@ -92,5 +95,20 @@ onNew = undefined
 {-
 Action to do when clicking the about button.
 -}
-onAbout = undefined
+onAbout = do
+  d <- aboutDialogNew
+  pbuff <- pixbufNewFromFile gLOGO
+  set d
+    [ aboutDialogProgramName := gTITLE
+    , aboutDialogVersion := "0.1"
+    , aboutDialogAuthors := ["Mihai Maruseac <mihai.maruseac@rosedu.org>"]
+    , aboutDialogDocumenters := ["Mihai Maruseac <mihai.maruseac@rosedu.org>"]
+    , aboutDialogArtists := ["Art taken from Public Domain on the web"]
+    , aboutDialogComments := "Uses genetic algorithms to evolve a robot in a maze \nSee README and LICENSE for more information."
+    , aboutDialogCopyright := "Copyright © 2011 - 2012 Mihai Maruseac <mihai.maruseac@rosedu.org>"
+    , aboutDialogLogo := Just pbuff
+    , windowIcon := Just pbuff
+    ]
+  dialogRun d
+  widgetDestroy d
 
