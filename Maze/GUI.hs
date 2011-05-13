@@ -1,13 +1,8 @@
-module Main
+module Maze.GUI
 where
 
 import Control.Monad.Trans (liftIO)
 import Graphics.UI.Gtk
-
-{- TODO move -}
-main = do
-  {- first, read arguments: TODO -}
-  loopGUI
 
 {-
 Used to construct and update the GUI.
@@ -16,7 +11,7 @@ Used to construct and update the GUI.
 {-
 Main window loop.
 -}
-loopGUI = do
+mazeGUI = do
   -- 1. Init GTK
   initGUI
   window <- windowNew
