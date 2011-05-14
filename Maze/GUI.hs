@@ -28,8 +28,8 @@ mazeGUI = do
   -- 3. Populate and set window's attributes.
   pbuff <- pixbufNewFromFile gLOGO
   set window
-    [ windowDefaultWidth := 400
-    , windowDefaultHeight := 300
+    [ windowDefaultWidth := 800
+    , windowDefaultHeight := 600
     , windowTitle := gTITLE
     , windowIcon := Just pbuff
     ]
