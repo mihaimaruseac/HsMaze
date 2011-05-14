@@ -42,11 +42,15 @@ Type of the IORef used.
 data IORType = IORCT
   { maze :: Maybe Maze
   , endPoint :: Maybe Point
+  , cGuy :: Maybe Int
+  , guyPos :: Maybe Point
+  , guyTime :: Maybe Time
+  , plans :: Maybe [Plan]
   , gen :: Maybe StdGen
   , model :: Maybe (ListStore ListStoreType)
   , cb :: Maybe HandlerId
   }
-empty = IORCT Nothing Nothing Nothing Nothing Nothing
+empty = IORCT Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing
 
 {-
 Evolution.
@@ -226,7 +230,7 @@ buildMazeArea b = do
   return canvas
 
 {-
-The actual drawing of the maze. TODO: draw robot
+The actual drawing of the maze.
 -}
 drawMaze :: Double -> Double -> IORType -> Render()
 drawMaze w h (IORCT {maze = Nothing}) = do
@@ -236,11 +240,32 @@ drawMaze w h (IORCT {maze = Nothing}) = do
   moveTo 0 h
   lineTo w 0
   stroke
-drawMaze w h (IORCT {maze = Just m}) = do
+drawMaze w h (IORCT {maze = Just m, guyPos = p}) = do
   clean
   let size = snd . snd . A.bounds $ m
   let fIs = fromIntegral size
-  mapM_ (drawWalls m size (w / fIs) (h / fIs)) (A.indices m)
+  let dx = w / fIs
+  let dy = h / fIs
+  mapM_ (drawWalls m size dx dy) (A.indices m)
+  stroke
+  drawGuy p dx dy
+
+{-
+Draws the robot if it exists
+-}
+drawGuy Nothing dx dy = return ()
+drawGuy (Just (y, x)) dx dy = do
+  setSourceRGB 1 0 0
+  let dx' = 0.2 * dx
+  let dy' = 0.2 * dy
+  let x' = dx * fromIntegral x - dx'
+  let y' = dy * fromIntegral y - dy'
+  let x'' = x' - dx + 2 * dx'
+  let y'' = y' - dy + 2 * dy'
+  moveTo x' y'
+  lineTo x'' y''
+  moveTo x'' y'
+  lineTo x' y''
   stroke
 
 {-
