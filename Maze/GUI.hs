@@ -10,6 +10,7 @@ import Control.Monad.State
 import Control.Monad.Trans (liftIO)
 import Data.IORef
 import Data.List ((\\))
+import Data.Maybe (fromJust)
 import Graphics.Rendering.Cairo
 import Graphics.UI.Gtk hiding (Point)
 import System.Random
@@ -35,6 +36,22 @@ gTIME = 1000
 Type of the ListStore used in GUI.
 -}
 type ListStoreType = (Int, Fitness)
+
+{-
+Type of finish information:
+  * True/False depending on whether a chromosome was completely simulated.
+  * Fitness of completed chromosome or 0 otherwise
+-}
+type FinishInfo = (Bool, Int, Fitness)
+
+-- simulation not finished
+notFinished :: FinishInfo
+notFinished = (False, 0, 0)
+
+-- simulation ended
+end :: IORType -> FinishInfo
+end r = (True, cGuy r,
+  fitness (guyPos r) (guyTime r) (endPoint r) (endTime r))
 
 {-
 Type of the IORef used.
@@ -64,9 +81,14 @@ instance Show IORType where
         _ -> "."
 
 {-
+Function to be called when a new generation is to be generated.
+-}
+newGenerationFunc = id
+
+{-
 Real evolution function. Will update IORType record.
 -}
-evolveFunc :: IORType -> IORType
+evolveFunc :: IORType -> (IORType, FinishInfo)
 evolveFunc r@(IORCT
   { maze = Just m
   , endPoint = endp
@@ -75,11 +97,13 @@ evolveFunc r@(IORCT
   , guyPos = pos
   , guyTime = t
   , plans = ps
-  , gen = Just g
   })
+  -- normal case: in the middle of simulation
   | t < endt && pos /= endp = let (p, t') = doStep (m, ps V.! guy) (pos, t)
-    in trace (show $ ps V.! guy) $ r { guyPos = p, guyTime = t'}
-  | otherwise = undefined
+    in (r { guyPos = p, guyTime = t'}, notFinished)
+  -- simulation ended
+  | t == endt || pos == endp = (r { guyPos = (1, 1), guyTime = 0, cGuy = guy + 1},
+    end r)
 evolveFunc a = trace (show a) undefined
 
 {-
@@ -87,18 +111,28 @@ Evolution.
 -}
 evolve :: IORef IORType -> Label -> Label -> Label -> DrawingArea -> IO Bool
 evolve ref gl csl fl dw = do
-  -- 1. Read from ref
+  -- 1. Update IORef
   r <- readIORef ref
-  let r' = evolveFunc r
+  let (r', fI) = evolveFunc r
   writeIORef ref r'
-  -- 2. Invalidate drawing area and draw
+  -- 2. If finished one step, update info
+  let m = fromJust . model $ r' -- surely, it will exist
+  let l = V.length . plans $ r'
+  case fI of
+    (True, i, f) -> do
+      listStoreSetValue m i (i + 1, f)
+      if i == l - 1
+      then modifyIORef ref newGenerationFunc
+      else return ()
+    _ -> return () -- ignore
+  -- 3. Invalidate drawing area and draw
   (w, h) <- widgetGetSize dw
   widgetQueueDrawArea dw 0 0 w h
-  -- ?. Update labels
+  -- 4. Update labels
   -- TODO gl -> generation count
   -- TODO fl -> best fitness
   labelSetText csl $ show (cGuy r', guyTime r')
-  -- ?. Return
+  -- 5. Return
   return True
 
 {-
@@ -364,7 +398,7 @@ onNew ref dw gl csl fl = do
   -- 1. Present config dialog and get options TODO
   let popSize = 10
   -- 2. Get maze
-  let (maze, g) = runState (genMaze (10, 10)) (mkStdGen 42)
+  let (maze, g) = runState (genMaze (2, 2)) (mkStdGen 42)
   -- 3. Fill ListStore from IORef
   r <- readIORef ref
   fillListStore (model r) popSize

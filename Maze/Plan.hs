@@ -14,9 +14,6 @@ import qualified Data.Vector as V
 import Maze.Maze
 import Maze.Types
 
-{- Time step. Limited to the size of maze (by code). -}
-type Time = Int
-
 {- The environment when testing a chromosome. -}
 type Env = (Maze, Plan)
 
@@ -68,4 +65,16 @@ getRandomDir :: State StdGen Cardinal
 getRandomDir = do
   r <- state $ randomR (0, 3)
   return $ toEnum r
+
+{-
+Computes the fitness of a plan.
+-}
+fitness :: Point -> Time -> Point -> Time -> Fitness
+fitness p t ep et = 100 * (et - t) - 3 * manhattan p ep
+
+{-
+Gets the manhattan distance between two points.
+-}
+manhattan :: Point -> Point -> Int
+manhattan (x, y) (x', y') = abs (x - x') + abs (y - y')
 

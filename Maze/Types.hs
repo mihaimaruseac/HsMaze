@@ -14,9 +14,8 @@ type Coord = Int
 type Size = (Length, Length)
 type Point = Size
 type Dir = Size
-
-{- Type synonim for the fitness. -}
-type Fitness = Integer
+type Time = Int
+type Fitness = Int
 
 {- The cardinal directions. -}
 data Cardinal = N | E | S | W deriving (Eq, Show, Read, Ord, Enum)
