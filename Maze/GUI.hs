@@ -30,7 +30,7 @@ Global constant values.
 -}
 gTITLE = "Robot in a maze"
 gLOGO = "res/icon.png"
-gTIME = 1000
+gTIME = 100
 
 {-
 Type of the ListStore used in GUI.
@@ -67,8 +67,10 @@ data IORType = IORCT
   , gen :: Maybe StdGen
   , model :: Maybe (ListStore ListStoreType)
   , cb :: Maybe HandlerId
+  , bestFitness :: Int
+  , generation :: Int
   }
-empty = IORCT Nothing (0, 0) 0 0 (0, 0) 0 V.empty Nothing Nothing Nothing
+empty = IORCT Nothing (0, 0) 0 0 (0, 0) 0 V.empty Nothing Nothing Nothing (-100) 0
 
 instance Show IORType where
   show x = show (maze x) ++ " " ++ show (endPoint x) ++ " " ++ show (endTime x) ++ " " ++ show (cGuy x) ++ " " ++ show (guyPos x) ++ " " ++ show (guyTime x) ++ " " ++ show (plans x) ++ " " ++ show (gen x) ++ " " ++ cm ++ ccb
@@ -81,9 +83,12 @@ instance Show IORType where
         _ -> "."
 
 {-
+{-
 Function to be called when a new generation is to be generated.
 -}
-newGenerationFunc = id
+newGenerationFunc :: IORType -> IORType
+newGenerationFunc r = r { cGuy = 0, guyPos = (1, 1), guyTime = 0}
+-}
 
 {-
 Real evolution function. Will update IORType record.
@@ -122,18 +127,49 @@ evolve ref gl csl fl dw = do
     (True, i, f) -> do
       listStoreSetValue m i (i + 1, f)
       if i == l - 1
-      then modifyIORef ref newGenerationFunc
+      then do --modifyIORef ref newGenerationFunc
+        finishStep ref
       else return ()
     _ -> return () -- ignore
   -- 3. Invalidate drawing area and draw
   (w, h) <- widgetGetSize dw
   widgetQueueDrawArea dw 0 0 w h
-  -- 4. Update labels
-  -- TODO gl -> generation count
-  -- TODO fl -> best fitness
-  labelSetText csl $ show (cGuy r', guyTime r')
+  -- 4. Update labels, after reading again the IORef
+  r <- readIORef ref
+  labelSetText gl $ show $ generation r
+  labelSetText fl $ show $ bestFitness r
+  labelSetText csl $ show (cGuy r, guyTime r)
   -- 5. Return
   return True
+
+{-
+Updates the IORef when an epoch is finished. Gets the best fitness so far,
+updates the population, restart a new epoch.
+-}
+finishStep :: IORef IORType -> IO ()
+finishStep ref = do
+  -- 1. Read IORef
+  r <- readIORef ref
+  -- 2. Update best fitness, generation, and other simple values
+  let ls = fromJust . model $ r
+  l <- listStoreToList ls
+  let m = maximum $ map snd l
+  let f = bestFitness r
+  let m' = max m f
+  let gen = 1 + generation r
+  -- 3. Get new population by mutation and crossover TODO
+  -- 4. Clear the ListStore
+  mapM_ (\x -> listStoreSetValue ls x (x+1, 0)) [0 .. length l - 1]
+  -- 5. Create the new IORef
+  writeIORef ref $ r
+    { cGuy = 0
+    , guyPos = (1, 1)
+    , guyTime = 0
+--    , gen = Just g' TODO
+--    , plans = plans' TODO
+    , bestFitness = m'
+    , generation = gen
+    }
 
 {-
 Main window loop.
@@ -398,14 +434,14 @@ onNew ref dw gl csl fl = do
   -- 1. Present config dialog and get options TODO
   let popSize = 10
   -- 2. Get maze
-  let (maze, g) = runState (genMaze (2, 2)) (mkStdGen 42)
+  let (maze, g) = runState (genMaze (3, 3)) (mkStdGen 42)
   -- 3. Fill ListStore from IORef
   r <- readIORef ref
   fillListStore (model r) popSize
   -- 4. Get maze details
   let size = snd . snd . A.bounds $ maze
   let pLen = size * size
-  -- 4. Get initial plans TODO
+  -- 4. Get initial plans
   let (plans, g') = runState (getRandomInitialPlans popSize pLen) g
   -- 5. Invalidate drawing area
   (w, h) <- widgetGetSize dw
@@ -426,6 +462,8 @@ onNew ref dw gl csl fl = do
     , guyPos = (1, 1)
     , guyTime = 0
     , plans = plans
+    , bestFitness = -10000
+    , generation = 1
     }
 
 {-
