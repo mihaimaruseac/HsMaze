@@ -4,6 +4,9 @@ where
 -- TODO: limit the exported symbols
 
 import Control.Arrow
+import Control.Monad.State
+import Data.Array.ST
+import System.Random
 
 import qualified Array as A
 import qualified Data.Vector as V
@@ -43,9 +46,26 @@ move S = first (+ 1)
 move W = second (subtract 1)
 
 {-
-m = fst $ (runState $ genMaze (5, 5)) (mkStdGen 42)
-p = V.fromList [E, E, S, E, S, S, S, E, W, S, E, W, S, N]
-pos = (1, 1) :: Point
-t = 0 :: Time
+Generates the random initial population.
 -}
+getRandomInitialPlans :: Int -> Int -> State StdGen (V.Vector Plan)
+getRandomInitialPlans len size = do
+  plans <- replicateM len (genOnePlan size)
+  return $ V.fromList plans
+
+{-
+Generates one initial plan (one chromosome from the initial population).
+-}
+genOnePlan :: Int -> State StdGen Plan
+genOnePlan len = do
+  l <- replicateM len getRandomDir
+  return $ V.fromList l
+
+{-
+Generates one random direction.
+-}
+getRandomDir :: State StdGen Cardinal
+getRandomDir = do
+  r <- state $ randomR (0, 3)
+  return $ toEnum r
 

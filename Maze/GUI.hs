@@ -42,22 +42,56 @@ Type of the IORef used.
 data IORType = IORCT
   { maze :: Maybe Maze
   , endPoint :: Maybe Point
+  , endTime :: Maybe Time
   , cGuy :: Maybe Int
   , guyPos :: Maybe Point
   , guyTime :: Maybe Time
-  , plans :: Maybe [Plan]
+  , plans :: Maybe (V.Vector Plan)
   , gen :: Maybe StdGen
   , model :: Maybe (ListStore ListStoreType)
   , cb :: Maybe HandlerId
   }
-empty = IORCT Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing
+empty = IORCT Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing
+
+instance Show IORType where
+  show x = show (maze x) ++ " " ++ show (endPoint x) ++ " " ++ show (endTime x) ++ " " ++ show (cGuy x) ++ " " ++ show (guyPos x) ++ " " ++ show (guyTime x) ++ " " ++ show (plans x) ++ " " ++ show (gen x) ++ " " ++ cm ++ ccb
+    where
+      cm = case model x of
+        Nothing -> "?"
+        _ -> "."
+      ccb = case cb x of
+        Nothing -> "?"
+        _ -> "."
+
+{-
+Real evolution function. Will update IORType record.
+-}
+evolveFunc :: IORType -> IORType
+evolveFunc r@(IORCT
+  { maze = Just m
+  , endPoint = Just endp
+  , endTime = Just endt
+  , cGuy = Just guy
+  , guyPos = Just pos
+  , guyTime = Just t
+  , plans = Just ps
+  , gen = Just g
+  })
+  | t < endt && pos /= endp = let (p, t') = doStep (m, ps V.! guy) (pos, t)
+    in trace (show $ ps V.! guy) $ r { guyPos = Just p, guyTime = Just t'}
+  | otherwise = undefined
+evolveFunc a = trace (show a) undefined
 
 {-
 Evolution.
 -}
-evolve :: IORef IORType -> IO Bool
-evolve ref = do
-  print "Called"
+evolve :: IORef IORType -> DrawingArea -> IO Bool
+evolve ref dw = do
+  -- 1. Update
+  modifyIORef ref evolveFunc
+  -- 2. Invalidate drawing area and draw
+  (w, h) <- widgetGetSize dw
+  widgetQueueDrawArea dw 0 0 w h
   return True
 
 {-
@@ -314,7 +348,7 @@ onNew ref dw = do
   -- 1. Present config dialog and get options TODO
   let popSize = 10
   -- 2. Get maze
-  let (maze, g) = (runState $ genMaze (10, 10)) (mkStdGen 42)
+  let (maze, g) = runState (genMaze (10, 10)) (mkStdGen 42)
   -- 3. Fill ListStore from IORef
   r <- readIORef ref
   fillListStore (model r) popSize
@@ -322,6 +356,7 @@ onNew ref dw = do
   let size = snd . snd . A.bounds $ maze
   let pLen = size * size
   -- 4. Get initial plans TODO
+  let (plans, g') = runState (getRandomInitialPlans popSize pLen) g
   -- 5. Invalidate drawing area
   (w, h) <- widgetGetSize dw
   widgetQueueDrawArea dw 0 0 w h
@@ -329,13 +364,18 @@ onNew ref dw = do
   case cb r of
     Just cb -> timeoutRemove cb
     Nothing -> return ()
-  cb <- timeoutAdd (evolve ref) gTIME
+  cb <- timeoutAdd (evolve ref dw) gTIME
   -- 7. Add everything to IORef
   writeIORef ref $ r
     { maze = Just maze
     , endPoint = Just (size, size)
-    , gen = Just g
+    , endTime = Just pLen
+    , gen = Just g'
     , cb = Just cb
+    , cGuy = Just 0
+    , guyPos = Just (1, 1)
+    , guyTime = Just 0
+    , plans = Just plans
     }
 
 {-
