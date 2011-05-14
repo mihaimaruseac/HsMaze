@@ -3,16 +3,20 @@ where
 
 -- TODO export only mazeGUI, hide others
 
+import Array
 import Control.Monad.State
 import Control.Monad.Trans (liftIO)
 import Data.IORef
+import Data.List ((\\))
 import Graphics.Rendering.Cairo
-import Graphics.UI.Gtk
+import Graphics.UI.Gtk hiding (Point)
 import System.Random
 
 import Maze.Maze
 import Maze.Types
 import Maze.Plan
+
+import Debug.Trace
 
 {-
 Used to construct and update the GUI.
@@ -58,7 +62,8 @@ mazeGUI = do
   onExpose drawing $ \x -> do
     (w, h) <- widgetGetSize drawing
     drw <- widgetGetDrawWindow drawing
-    renderWithDrawable drw $ drawMaze (fromIntegral w) (fromIntegral h) ref
+    c <- readIORef ref
+    renderWithDrawable drw $ drawMaze (fromIntegral w) (fromIntegral h) c
     return False
   -- 6. Run GUI loop
   mainGUI
@@ -75,16 +80,17 @@ populateWindow w r = do
   -}
   vBox <- vBoxNew False 10
   w `containerAdd` vBox
-  -- 2. Build the toolbar
-  buildToolbar vBox r
-  -- 3. Build the main area
-  buildMainArea vBox
+  -- 2. Build the main area
+  dw <- buildMainArea vBox
+  -- 3. Build the toolbar
+  buildToolbar vBox r dw
+  return dw
 
 {-
 Builds the application's toolbar.
 -}
-buildToolbar :: VBox -> IORef IORType -> IO ()
-buildToolbar b r = do
+buildToolbar :: VBox -> IORef IORType -> DrawingArea -> IO ()
+buildToolbar b r dw = do
   -- 1. Build toolbar and set attributes
   tb <- toolbarNew
   boxPackStart b tb PackNatural 10
@@ -93,7 +99,7 @@ buildToolbar b r = do
   -- 3. Add widgets
   let addF = addBtnToToolbar tb tp -- helper function
   bNew <- addF stockNew "Starts a new population, with a new maze"
-  bNew `onToolButtonClicked` (onNew r)
+  bNew `onToolButtonClicked` (onNew r dw)
   bAbout <- addF stockAbout "About this program"
   bAbout `onToolButtonClicked` onAbout
   addSeparator tb
@@ -125,7 +131,7 @@ buildMainArea :: VBox -> IO DrawingArea
 buildMainArea b = do
   -- 1. New HBox
   box <- hBoxNew False 10
-  boxPackStart b box PackGrow 10
+  boxPackEnd b box PackGrow 10
   -- 2. Build statistics table
   buildPopulationInfo box
   -- 3. Build maze area
@@ -204,26 +210,74 @@ buildMazeArea b = do
 {-
 The actual drawing of the maze.
 -}
-drawMaze :: Double -> Double -> IORef IORType -> Render()
-drawMaze w h r = do
-  setSourceRGB 1 1 1
-  paint
-
-  setSourceRGB 0 0 0
+drawMaze :: Double -> Double -> IORType -> Render()
+drawMaze w h Nothing = do
+  clean
   moveTo 0 0
   lineTo w h
+  moveTo 0 h
+  lineTo w 0
   stroke
+drawMaze w h (Just r) = do
+  clean
+  let m = maze r
+  let size = snd . snd . bounds $ m
+  let fIs = fromIntegral size
+  mapM_ (drawWalls m size (w / fIs) (h / fIs)) (indices m)
+  stroke
+
+{-
+Cleanup of drawing area.
+-}
+clean :: Render()
+clean = do
+  setSourceRGB 1 1 1
+  paint
+  setSourceRGB 0 0 0
+
+{-
+Draws wall for a single cell.
+-}
+drawWalls :: Maze -> Int -> Double -> Double -> Point -> Render ()
+drawWalls m s dx dy p@(x, y) = mapM_ (renderOneWall dx dy y' x') walls
+  where
+    x' = dx * (fromIntegral x) + if x == 1 then 1 else if x == s then -1 else 0
+    y' = dy * (fromIntegral y) + if y == 1 then 1 else if y == s then -1 else 0
+    frees = (\(C l) -> l) $ m ! p
+    l = if y == 1 then if x == 1 then [] else [N] else [W]
+    walls = ([N, E, S, W] \\ frees) \\ l
+
+{-
+Renders a single wall.
+-}
+renderOneWall :: Double -> Double -> Double -> Double -> Cardinal -> Render ()
+renderOneWall dx dy x y N = do
+  moveTo x (y - dy)
+  lineTo (x - dx) (y - dy)
+renderOneWall dx dy x y E = do
+  moveTo x y
+  lineTo x (y - dy)
+renderOneWall dx dy x y S = do
+  moveTo x y
+  lineTo (x - dx) y
+renderOneWall dx dy x y W = do
+  moveTo (x - dx) y
+  lineTo (x - dx) (y - dy)
 
 {-
 Action to do when clicking the New button.
 -}
-onNew :: IORef IORType -> IO ()
-onNew ref = do
-  -- 1. present config dialog and get options TODO
-  -- 2. get maze
-  let (maze, g) = (runState $ genMaze (5, 5)) (mkStdGen 42)
-  print maze
+onNew :: IORef IORType -> DrawingArea-> IO ()
+onNew ref dw = do
+  -- 1. Present config dialog and get options TODO
+  -- 2. Get maze
+  let (maze, g) = (runState $ genMaze (10, 10)) (mkStdGen 42)
   -- 3. Complete IORef, return TODO
+  writeIORef ref $ Just $ IORCT maze
+  -- 4. Invalidate drawing area
+  (w, h) <- widgetGetSize dw
+  widgetQueueDrawArea dw 0 0 w h
+  -- 5. Setup timer callback TODO
 
 {-
 Action to do when clicking the about button.
