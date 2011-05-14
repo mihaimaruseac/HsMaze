@@ -3,7 +3,9 @@ where
 
 -- TODO export only mazeGUI, hide others
 
-import Array
+import qualified Array as A
+import qualified Data.Vector as V
+
 import Control.Monad.State
 import Control.Monad.Trans (liftIO)
 import Data.IORef
@@ -29,12 +31,17 @@ gTITLE = "Robot in a maze"
 gLOGO = "res/icon.png"
 
 {-
+Type of the ListStore used in GUI.
+-}
+type ListStoreType = (Int, Maybe Fitness)
+
+{-
 Type of the IORef used.
 -}
 data IORType = IORCT
   { maze :: Maybe Maze
   , gen :: Maybe StdGen
-  , model :: Maybe (ListStore (Int, Fitness))
+  , model :: Maybe (ListStore ListStoreType)
   }
 
 {-
@@ -74,11 +81,7 @@ Constructs all widgets found in the window.
 -}
 populateWindow :: Window -> IORef IORType -> IO DrawingArea
 populateWindow w r = do
-  {-
-  1. Build one vertical box for splitting the screen in two and add it to
-  window. The areas obtained are separated by 10 pixels and are not equal in
-  height.
-  -}
+  -- 1. Build one vertical box for splitting the screen in two
   vBox <- vBoxNew False 10
   w `containerAdd` vBox
   -- 2. Build the main area
@@ -222,9 +225,9 @@ drawMaze w h (IORCT Nothing _ _) = do
   stroke
 drawMaze w h (IORCT (Just m) _ _) = do
   clean
-  let size = snd . snd . bounds $ m
+  let size = snd . snd . A.bounds $ m
   let fIs = fromIntegral size
-  mapM_ (drawWalls m size (w / fIs) (h / fIs)) (indices m)
+  mapM_ (drawWalls m size (w / fIs) (h / fIs)) (A.indices m)
   stroke
 
 {-
@@ -244,7 +247,7 @@ drawWalls m s dx dy p@(x, y) = mapM_ (renderOneWall dx dy y' x') walls
   where
     x' = dx * (fromIntegral x) + if x == 1 then 1 else if x == s then -1 else 0
     y' = dy * (fromIntegral y) + if y == 1 then 1 else if y == s then -1 else 0
-    frees = (\(C l) -> l) $ m ! p
+    frees = (\(C l) -> l) $ m A.! p
     l = if y == 1 then if x == 1 then [] else [N] else [W]
     walls = ([N, E, S, W] \\ frees) \\ l
 
@@ -271,15 +274,26 @@ Action to do when clicking the New button.
 onNew :: IORef IORType -> DrawingArea-> IO ()
 onNew ref dw = do
   -- 1. Present config dialog and get options TODO
+  let popSize = 10
   -- 2. Get maze
   let (maze, g) = (runState $ genMaze (10, 10)) (mkStdGen 42)
   -- 3. Complete IORef, return TODO
   r <- readIORef ref
+  fillListStore (model r) popSize
   writeIORef ref $ r {maze = Just maze, gen = Just g}
   -- 4. Invalidate drawing area
   (w, h) <- widgetGetSize dw
   widgetQueueDrawArea dw 0 0 w h
   -- 5. Setup timer callback TODO
+
+{-
+Completes the list store with the initial population.
+-}
+fillListStore :: Maybe (ListStore ListStoreType) -> Int -> IO ()
+fillListStore Nothing _ = return ()
+fillListStore (Just m) s = do
+  listStoreClear m
+  mapM_ (\x -> listStoreAppend m (x, Nothing)) [1..s]
 
 {-
 Action to do when clicking the about button.
