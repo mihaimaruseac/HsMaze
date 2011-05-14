@@ -4,4 +4,3 @@ module Maze
 
 import Maze.GUI
 
-

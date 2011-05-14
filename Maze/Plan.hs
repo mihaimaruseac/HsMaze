@@ -9,14 +9,8 @@ import qualified Data.Vector as V
 import Maze.Maze
 import Maze.Types
 
-{- Type synonim for the fitness. -}
-type Fitness = Integer
-
 {- Time step. Limited to the size of maze (by code). -}
 type Time = Int
-
-{- A plan is a vector of directions to go, at each time step. -}
-type Plan = V.Vector Cardinal
 
 {- The environment when testing a chromosome. -}
 type Env = (Maze, Plan)

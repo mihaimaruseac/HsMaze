@@ -1,6 +1,9 @@
 module Maze.Types
 where
 
+import Array
+import Data.Vector
+
 {-
 Common types are presented in this file.
 -}
@@ -12,6 +15,18 @@ type Size = (Length, Length)
 type Point = Size
 type Dir = Size
 
+{- Type synonim for the fitness. -}
+type Fitness = Integer
+
 {- The cardinal directions. -}
 data Cardinal = N | E | S | W deriving (Eq, Show, Read, Ord, Enum)
+
+{- A cell. The list contains the openings. -}
+newtype Cell = C [Cardinal] deriving (Show, Read)
+
+{- Simple type for maze. -}
+type Maze = Array Size Cell
+
+{- A plan is a vector of directions to go, at each time step. -}
+type Plan = Vector Cardinal
 

@@ -8,6 +8,8 @@ import Graphics.UI.Gtk
 import System.Random
 
 import Maze.Maze
+import Maze.Types
+import Maze.Plan
 
 {-
 Used to construct and update the GUI.

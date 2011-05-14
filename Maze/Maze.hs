@@ -9,12 +9,6 @@ import System.Random
 
 import Maze.Types
 
-{- A cell. The list contains the openings. -}
-newtype Cell = C [Cardinal] deriving (Show, Read)
-
-{- Simple type for maze. -}
-type Maze = Array Size Cell
-
 {-
 Generates the entire maze.
 -}
