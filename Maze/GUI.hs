@@ -31,17 +31,18 @@ gLOGO = "res/icon.png"
 {-
 Type of the IORef used.
 -}
-newtype IORComplexType = IORCT
-  { maze :: Maze
+data IORType = IORCT
+  { maze :: Maybe Maze
+  , gen :: Maybe StdGen
+  , model :: Maybe (ListStore (Int, Fitness))
   }
-type IORType = Maybe IORComplexType
 
 {-
 Main window loop.
 -}
 mazeGUI = do
   -- 1. Get empty IORef
-  ref <- newIORef Nothing
+  ref <- newIORef $ IORCT Nothing Nothing Nothing
   -- 2. Init GTK
   initGUI
   window <- windowNew
@@ -58,7 +59,7 @@ mazeGUI = do
   drawing <- populateWindow window ref
   -- 4. Show everything
   widgetShowAll window
-  -- 5. Set the drawing callbacks TODO
+  -- 5. Set the drawing callbacks
   onExpose drawing $ \x -> do
     (w, h) <- widgetGetSize drawing
     drw <- widgetGetDrawWindow drawing
@@ -81,7 +82,7 @@ populateWindow w r = do
   vBox <- vBoxNew False 10
   w `containerAdd` vBox
   -- 2. Build the main area
-  dw <- buildMainArea vBox
+  dw <- buildMainArea vBox r
   -- 3. Build the toolbar
   buildToolbar vBox r dw
   return dw
@@ -127,21 +128,21 @@ addSeparator tb = do
 {-
 Builds the application main area.
 -}
-buildMainArea :: VBox -> IO DrawingArea
-buildMainArea b = do
+buildMainArea :: VBox -> IORef IORType -> IO DrawingArea
+buildMainArea b r = do
   -- 1. New HBox
   box <- hBoxNew False 10
   boxPackEnd b box PackGrow 10
   -- 2. Build statistics table
-  buildPopulationInfo box
+  buildPopulationInfo box r
   -- 3. Build maze area
   buildMazeArea box
 
 {-
 Builds the population info table
 -}
-buildPopulationInfo :: HBox -> IO ()
-buildPopulationInfo b = do
+buildPopulationInfo :: HBox -> IORef IORType -> IO ()
+buildPopulationInfo b r = do
   -- 1. A nice frame
   f <- frameNew
   f `frameSetLabel` "Statistics"
@@ -163,15 +164,16 @@ buildPopulationInfo b = do
   fl <- labelNew $ Just "0"
   tableAttachDefaults t fl 1 2 1 2
   -- 6. Population display
-  buildPopulationDisplay box
+  buildPopulationDisplay box r
 
 {-
 Builds the tree view for population display.
 -}
-buildPopulationDisplay :: VBox -> IO ()
-buildPopulationDisplay b = do
+buildPopulationDisplay :: VBox -> IORef IORType -> IO ()
+buildPopulationDisplay b r = do
   -- 1. The model
-  model <- listStoreNew ([] :: [(Int, Int)])-- empty for now
+  model <- listStoreNew [] -- empty for now
+  writeIORef r $ IORCT Nothing Nothing (Just model)
   -- 2. The view
   view <- treeViewNewWithModel model
   treeViewSetHeadersVisible view True
@@ -211,16 +213,15 @@ buildMazeArea b = do
 The actual drawing of the maze.
 -}
 drawMaze :: Double -> Double -> IORType -> Render()
-drawMaze w h Nothing = do
+drawMaze w h (IORCT Nothing _ _) = do
   clean
   moveTo 0 0
   lineTo w h
   moveTo 0 h
   lineTo w 0
   stroke
-drawMaze w h (Just r) = do
+drawMaze w h (IORCT (Just m) _ _) = do
   clean
-  let m = maze r
   let size = snd . snd . bounds $ m
   let fIs = fromIntegral size
   mapM_ (drawWalls m size (w / fIs) (h / fIs)) (indices m)
@@ -273,7 +274,8 @@ onNew ref dw = do
   -- 2. Get maze
   let (maze, g) = (runState $ genMaze (10, 10)) (mkStdGen 42)
   -- 3. Complete IORef, return TODO
-  writeIORef ref $ Just $ IORCT maze
+  r <- readIORef ref
+  writeIORef ref $ r {maze = Just maze, gen = Just g}
   -- 4. Invalidate drawing area
   (w, h) <- widgetGetSize dw
   widgetQueueDrawArea dw 0 0 w h
