@@ -1,6 +1,8 @@
 module Maze.Plan
 where
 
+-- TODO: limit the exported symbols
+
 import Control.Arrow
 
 import qualified Array as A

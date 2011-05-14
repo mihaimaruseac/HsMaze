@@ -1,6 +1,8 @@
 module Maze.Maze
 where
 
+-- TODO: export only genMaze, hide others
+
 import Array
 import Control.Arrow
 import Control.Monad.State

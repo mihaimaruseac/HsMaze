@@ -1,6 +1,8 @@
 module Maze.GUI
 where
 
+-- TODO expoert only mazeGUI, hide others
+
 import Control.Monad.State
 import Control.Monad.Trans (liftIO)
 import Graphics.Rendering.Cairo
