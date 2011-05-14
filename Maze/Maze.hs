@@ -1,4 +1,4 @@
-module Maze
+module Maze.Maze
 where
 
 import Array
@@ -7,7 +7,7 @@ import Control.Monad.State
 import Data.Array.ST
 import System.Random
 
-import Types
+import Maze.Types
 
 {- A cell. The list contains the openings. -}
 newtype Cell = C [Cardinal] deriving (Show, Read)

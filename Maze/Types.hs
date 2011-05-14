@@ -1,4 +1,4 @@
-module Types
+module Maze.Types
 where
 
 {-
