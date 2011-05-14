@@ -1,10 +1,11 @@
 module Maze.GUI
 where
 
--- TODO expoert only mazeGUI, hide others
+-- TODO export only mazeGUI, hide others
 
 import Control.Monad.State
 import Control.Monad.Trans (liftIO)
+import Data.IORef
 import Graphics.Rendering.Cairo
 import Graphics.UI.Gtk
 import System.Random
@@ -17,17 +18,30 @@ import Maze.Plan
 Used to construct and update the GUI.
 -}
 
+{-
+Global constant values.
+-}
 gTITLE = "Robot in a maze"
 gLOGO = "res/icon.png"
+
+{-
+Type of the IORef used.
+-}
+newtype IORComplexType = IORCT
+  { maze :: Maze
+  }
+type IORType = Maybe IORComplexType
 
 {-
 Main window loop.
 -}
 mazeGUI = do
-  -- 1. Init GTK
+  -- 1. Get empty IORef
+  ref <- newIORef Nothing
+  -- 2. Init GTK
   initGUI
   window <- windowNew
-  -- 2. Create the delete event allowing the app to finish
+  -- 3. Create the delete event allowing the app to finish
   window `on` deleteEvent $ liftIO mainQuit >> return False
   -- 3. Populate and set window's attributes.
   pbuff <- pixbufNewFromFile gLOGO
@@ -37,18 +51,23 @@ mazeGUI = do
     , windowTitle := gTITLE
     , windowIcon := Just pbuff
     ]
-  drawing <- populateWindow window
+  drawing <- populateWindow window ref
   -- 4. Show everything
   widgetShowAll window
   -- 5. Set the drawing callbacks TODO
+  onExpose drawing $ \x -> do
+    (w, h) <- widgetGetSize drawing
+    drw <- widgetGetDrawWindow drawing
+    renderWithDrawable drw $ drawMaze (fromIntegral w) (fromIntegral h) ref
+    return False
   -- 6. Run GUI loop
   mainGUI
 
 {-
 Constructs all widgets found in the window.
 -}
-populateWindow :: Window -> IO DrawingArea
-populateWindow w = do
+populateWindow :: Window -> IORef IORType -> IO DrawingArea
+populateWindow w r = do
   {-
   1. Build one vertical box for splitting the screen in two and add it to
   window. The areas obtained are separated by 10 pixels and are not equal in
@@ -57,15 +76,15 @@ populateWindow w = do
   vBox <- vBoxNew False 10
   w `containerAdd` vBox
   -- 2. Build the toolbar
-  buildToolbar vBox
+  buildToolbar vBox r
   -- 3. Build the main area
   buildMainArea vBox
 
 {-
 Builds the application's toolbar.
 -}
-buildToolbar :: VBox -> IO ()
-buildToolbar b = do
+buildToolbar :: VBox -> IORef IORType -> IO ()
+buildToolbar b r = do
   -- 1. Build toolbar and set attributes
   tb <- toolbarNew
   boxPackStart b tb PackNatural 10
@@ -74,7 +93,7 @@ buildToolbar b = do
   -- 3. Add widgets
   let addF = addBtnToToolbar tb tp -- helper function
   bNew <- addF stockNew "Starts a new population, with a new maze"
-  bNew `onToolButtonClicked` onNew
+  bNew `onToolButtonClicked` (onNew r)
   bAbout <- addF stockAbout "About this program"
   bAbout `onToolButtonClicked` onAbout
   addSeparator tb
@@ -115,6 +134,7 @@ buildMainArea b = do
 {-
 Builds the population info table
 -}
+buildPopulationInfo :: HBox -> IO ()
 buildPopulationInfo b = do
   -- 1. A nice frame
   f <- frameNew
@@ -142,6 +162,7 @@ buildPopulationInfo b = do
 {-
 Builds the tree view for population display.
 -}
+buildPopulationDisplay :: VBox -> IO ()
 buildPopulationDisplay b = do
   -- 1. The model
   model <- listStoreNew ([] :: [(Int, Int)])-- empty for now
@@ -183,19 +204,26 @@ buildMazeArea b = do
 {-
 The actual drawing of the maze.
 -}
-drawMaze :: Render()
-drawMaze = do
-  return ()
+drawMaze :: Double -> Double -> IORef IORType -> Render()
+drawMaze w h r = do
+  setSourceRGB 1 1 1
+  paint
+
+  setSourceRGB 0 0 0
+  moveTo 0 0
+  lineTo w h
+  stroke
 
 {-
 Action to do when clicking the New button.
 -}
-onNew :: IO ()
-onNew = do
+onNew :: IORef IORType -> IO ()
+onNew ref = do
   -- 1. present config dialog and get options TODO
   -- 2. get maze
   let (maze, g) = (runState $ genMaze (5, 5)) (mkStdGen 42)
   print maze
+  -- 3. Complete IORef, return TODO
 
 {-
 Action to do when clicking the about button.
