@@ -78,3 +78,9 @@ Gets the manhattan distance between two points.
 manhattan :: Point -> Point -> Int
 manhattan (x, y) (x', y') = abs (x - x') + abs (y - y')
 
+{-
+Returns a new population from an older one, via crossover and mutation.
+-}
+newPopulation :: V.Vector (Plan, Fitness) -> State StdGen (V.Vector Plan)
+newPopulation = undefined
+

@@ -63,7 +63,7 @@ data IORType = IORCT
   , cGuy :: Int
   , guyPos :: Point
   , guyTime :: Time
-  , plans :: (V.Vector Plan)
+  , plans :: V.Vector Plan
   , gen :: Maybe StdGen
   , model :: Maybe (ListStore ListStoreType)
   , cb :: Maybe HandlerId
@@ -152,12 +152,16 @@ finishStep ref = do
   r <- readIORef ref
   -- 2. Update best fitness, generation, and other simple values
   let ls = fromJust . model $ r
-  l <- listStoreToList ls
-  let m = maximum $ map snd l
+  l0 <- listStoreToList ls
+  let l = map snd l0
+  let m = maximum l
   let f = bestFitness r
   let m' = max m f
-  let gen = 1 + generation r
-  -- 3. Get new population by mutation and crossover TODO
+  let newGen = 1 + generation r
+  -- 3. Get new population by mutation and crossover
+  let oldPop = V.zip (plans r) (V.fromList l)
+  print oldPop
+  let (plans', g') = runState (newPopulation oldPop) (fromJust $ gen r)
   -- 4. Clear the ListStore
   mapM_ (\x -> listStoreSetValue ls x (x+1, 0)) [0 .. length l - 1]
   -- 5. Create the new IORef
@@ -165,10 +169,10 @@ finishStep ref = do
     { cGuy = 0
     , guyPos = (1, 1)
     , guyTime = 0
---    , gen = Just g' TODO
---    , plans = plans' TODO
+    , gen = Just g'
+    , plans = plans'
     , bestFitness = m'
-    , generation = gen
+    , generation = newGen
     }
 
 {-
