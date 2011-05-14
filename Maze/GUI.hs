@@ -85,8 +85,9 @@ evolveFunc a = trace (show a) undefined
 {-
 Evolution.
 -}
-evolve :: IORef IORType -> DrawingArea -> IO Bool
-evolve ref dw = do
+evolve :: IORef IORType -> Label -> Label -> Label -> DrawingArea -> IO Bool
+evolve ref gl csl fl dw = do
+  print "Called"
   -- 1. Update
   modifyIORef ref evolveFunc
   -- 2. Invalidate drawing area and draw
@@ -135,16 +136,16 @@ populateWindow w r = do
   vBox <- vBoxNew False 10
   w `containerAdd` vBox
   -- 2. Build the main area
-  dw <- buildMainArea vBox r
+  (dw, gl, csl, fl) <- buildMainArea vBox r
   -- 3. Build the toolbar
-  buildToolbar vBox r dw
+  buildToolbar vBox r dw gl csl fl
   return dw
 
 {-
 Builds the application's toolbar.
 -}
-buildToolbar :: VBox -> IORef IORType -> DrawingArea -> IO ()
-buildToolbar b r dw = do
+buildToolbar :: VBox -> IORef IORType -> DrawingArea -> Label -> Label -> Label -> IO ()
+buildToolbar b r dw gl csl fl = do
   -- 1. Build toolbar and set attributes
   tb <- toolbarNew
   boxPackStart b tb PackNatural 10
@@ -153,7 +154,7 @@ buildToolbar b r dw = do
   -- 3. Add widgets
   let addF = addBtnToToolbar tb tp -- helper function
   bNew <- addF stockNew "Starts a new population, with a new maze"
-  bNew `onToolButtonClicked` (onNew r dw)
+  bNew `onToolButtonClicked` (onNew r dw gl csl fl)
   bAbout <- addF stockAbout "About this program"
   bAbout `onToolButtonClicked` onAbout
   addSeparator tb
@@ -181,20 +182,22 @@ addSeparator tb = do
 {-
 Builds the application main area.
 -}
-buildMainArea :: VBox -> IORef IORType -> IO DrawingArea
+buildMainArea :: VBox -> IORef IORType -> IO (DrawingArea, Label, Label, Label)
 buildMainArea b r = do
   -- 1. New HBox
   box <- hBoxNew False 10
   boxPackEnd b box PackGrow 10
   -- 2. Build statistics table
-  buildPopulationInfo box r
+  (gl, csl, fl) <- buildPopulationInfo box r
   -- 3. Build maze area
-  buildMazeArea box
+  da <- buildMazeArea box
+  -- 4. Return widgets to be completed in callbacks
+  return (da, gl, csl, fl)
 
 {-
 Builds the population info table
 -}
-buildPopulationInfo :: HBox -> IORef IORType -> IO ()
+buildPopulationInfo :: HBox -> IORef IORType -> IO (Label, Label, Label)
 buildPopulationInfo b r = do
   -- 1. A nice frame
   f <- frameNew
@@ -204,20 +207,27 @@ buildPopulationInfo b r = do
   box <- vBoxNew False 5
   f `containerAdd` box
   -- 3. A table
-  t <- tableNew 2 2 True
+  t <- tableNew 3 2 True
   boxPackStart box t PackNatural 0
   -- 4. Current generation number display
   l <- labelNew $ Just "Generation:"
   tableAttachDefaults t l 0 1 0 1
   gl <- labelNew $ Just "0"
   tableAttachDefaults t gl 1 2 0 1
-  -- 5. Fitness display
-  l' <- labelNew $ Just "Best fitness:"
+  -- 5. Current time step, guy number
+  l' <- labelNew $ Just "Current step:"
   tableAttachDefaults t l' 0 1 1 2
+  csl <- labelNew $ Just "(0, 0)"
+  tableAttachDefaults t csl 1 2 1 2
+  -- 6. Fitness display
+  l'' <- labelNew $ Just "Best fitness:"
+  tableAttachDefaults t l'' 0 1 2 3
   fl <- labelNew $ Just "0"
-  tableAttachDefaults t fl 1 2 1 2
-  -- 6. Population display
+  tableAttachDefaults t fl 1 2 2 3
+  -- 7. Population display
   buildPopulationDisplay box r
+  -- 8. Return widgets to be completed in callbacks
+  return (gl, csl, fl)
 
 {-
 Builds the tree view for population display.
@@ -343,8 +353,8 @@ renderOneWall dx dy x y W = do
 {-
 Action to do when clicking the New button.
 -}
-onNew :: IORef IORType -> DrawingArea-> IO ()
-onNew ref dw = do
+onNew :: IORef IORType -> DrawingArea-> Label -> Label -> Label -> IO ()
+onNew ref dw gl csl fl = do
   -- 1. Present config dialog and get options TODO
   let popSize = 10
   -- 2. Get maze
@@ -364,7 +374,7 @@ onNew ref dw = do
   case cb r of
     Just cb -> timeoutRemove cb
     Nothing -> return ()
-  cb <- timeoutAdd (evolve ref dw) gTIME
+  cb <- timeoutAdd (evolve ref gl csl fl dw) gTIME
   -- 7. Add everything to IORef
   writeIORef ref $ r
     { maze = Just maze
