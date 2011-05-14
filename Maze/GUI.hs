@@ -29,6 +29,7 @@ Global constant values.
 -}
 gTITLE = "Robot in a maze"
 gLOGO = "res/icon.png"
+gTIME = 1000
 
 {-
 Type of the ListStore used in GUI.
@@ -43,8 +44,17 @@ data IORType = IORCT
   , endPoint :: Maybe Point
   , gen :: Maybe StdGen
   , model :: Maybe (ListStore ListStoreType)
+  , cb :: Maybe HandlerId
   }
-empty = IORCT Nothing Nothing Nothing Nothing
+empty = IORCT Nothing Nothing Nothing Nothing Nothing
+
+{-
+Evolution.
+-}
+evolve :: IORef IORType -> IO Bool
+evolve ref = do
+  print "Called"
+  return True
 
 {-
 Main window loop.
@@ -216,7 +226,7 @@ buildMazeArea b = do
   return canvas
 
 {-
-The actual drawing of the maze.
+The actual drawing of the maze. TODO: draw robot
 -}
 drawMaze :: Double -> Double -> IORType -> Render()
 drawMaze w h (IORCT {maze = Nothing}) = do
@@ -280,14 +290,28 @@ onNew ref dw = do
   let popSize = 10
   -- 2. Get maze
   let (maze, g) = (runState $ genMaze (10, 10)) (mkStdGen 42)
-  -- 3. Complete IORef, return TODO
+  -- 3. Fill ListStore from IORef
   r <- readIORef ref
   fillListStore (model r) popSize
-  writeIORef ref $ r {maze = Just maze, endPoint = Just (3, 4), gen = Just g}
-  -- 4. Invalidate drawing area
+  -- 4. Get maze details
+  let size = snd . snd . A.bounds $ maze
+  let pLen = size * size
+  -- 4. Get initial plans TODO
+  -- 5. Invalidate drawing area
   (w, h) <- widgetGetSize dw
   widgetQueueDrawArea dw 0 0 w h
-  -- 5. Setup timer callback TODO
+  -- 6. Setup timer callback
+  case cb r of
+    Just cb -> timeoutRemove cb
+    Nothing -> return ()
+  cb <- timeoutAdd (evolve ref) gTIME
+  -- 7. Add everything to IORef
+  writeIORef ref $ r
+    { maze = Just maze
+    , endPoint = Just (size, size)
+    , gen = Just g
+    , cb = Just cb
+    }
 
 {-
 Completes the list store with the initial population.
