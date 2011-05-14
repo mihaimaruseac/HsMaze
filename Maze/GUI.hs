@@ -117,11 +117,11 @@ buildPopulationInfo b = do
   f `frameSetLabel` "Statistics"
   boxPackEnd b f PackNatural 10
   -- 2. Another VBox
-  box <- vBoxNew False 10
+  box <- vBoxNew False 5
   f `containerAdd` box
   -- 3. A table
   t <- tableNew 2 2 True
-  boxPackStart box t PackNatural 10
+  boxPackStart box t PackNatural 0
   -- 4. Current generation number display
   l <- labelNew $ Just "Generation:"
   tableAttachDefaults t l 0 1 0 1
@@ -144,7 +144,7 @@ buildPopulationDisplay b = do
   -- 2. The view
   view <- treeViewNewWithModel model
   treeViewSetHeadersVisible view True
-  boxPackStart b view PackGrow 10
+  boxPackStart b view PackGrow 0
   -- 3. Columns, accessors, etc
   buildColumn model view (show.fst) "Chromosome number"
   buildColumn model view (show.snd) "Fitness"
