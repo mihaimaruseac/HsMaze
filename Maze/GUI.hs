@@ -34,24 +34,24 @@ gTIME = 1000
 {-
 Type of the ListStore used in GUI.
 -}
-type ListStoreType = (Int, Maybe Fitness)
+type ListStoreType = (Int, Fitness)
 
 {-
 Type of the IORef used.
 -}
 data IORType = IORCT
   { maze :: Maybe Maze
-  , endPoint :: Maybe Point
-  , endTime :: Maybe Time
-  , cGuy :: Maybe Int
-  , guyPos :: Maybe Point
-  , guyTime :: Maybe Time
-  , plans :: Maybe (V.Vector Plan)
+  , endPoint :: Point
+  , endTime :: Time
+  , cGuy :: Int
+  , guyPos :: Point
+  , guyTime :: Time
+  , plans :: (V.Vector Plan)
   , gen :: Maybe StdGen
   , model :: Maybe (ListStore ListStoreType)
   , cb :: Maybe HandlerId
   }
-empty = IORCT Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing
+empty = IORCT Nothing (0, 0) 0 0 (0, 0) 0 V.empty Nothing Nothing Nothing
 
 instance Show IORType where
   show x = show (maze x) ++ " " ++ show (endPoint x) ++ " " ++ show (endTime x) ++ " " ++ show (cGuy x) ++ " " ++ show (guyPos x) ++ " " ++ show (guyTime x) ++ " " ++ show (plans x) ++ " " ++ show (gen x) ++ " " ++ cm ++ ccb
@@ -69,16 +69,16 @@ Real evolution function. Will update IORType record.
 evolveFunc :: IORType -> IORType
 evolveFunc r@(IORCT
   { maze = Just m
-  , endPoint = Just endp
-  , endTime = Just endt
-  , cGuy = Just guy
-  , guyPos = Just pos
-  , guyTime = Just t
-  , plans = Just ps
+  , endPoint = endp
+  , endTime = endt
+  , cGuy = guy
+  , guyPos = pos
+  , guyTime = t
+  , plans = ps
   , gen = Just g
   })
   | t < endt && pos /= endp = let (p, t') = doStep (m, ps V.! guy) (pos, t)
-    in trace (show $ ps V.! guy) $ r { guyPos = Just p, guyTime = Just t'}
+    in trace (show $ ps V.! guy) $ r { guyPos = p, guyTime = t'}
   | otherwise = undefined
 evolveFunc a = trace (show a) undefined
 
@@ -87,12 +87,18 @@ Evolution.
 -}
 evolve :: IORef IORType -> Label -> Label -> Label -> DrawingArea -> IO Bool
 evolve ref gl csl fl dw = do
-  print "Called"
-  -- 1. Update
-  modifyIORef ref evolveFunc
+  -- 1. Read from ref
+  r <- readIORef ref
+  let r' = evolveFunc r
+  writeIORef ref r'
   -- 2. Invalidate drawing area and draw
   (w, h) <- widgetGetSize dw
   widgetQueueDrawArea dw 0 0 w h
+  -- ?. Update labels
+  -- TODO gl -> generation count
+  -- TODO fl -> best fitness
+  labelSetText csl $ show (cGuy r', guyTime r')
+  -- ?. Return
   return True
 
 {-
@@ -297,8 +303,8 @@ drawMaze w h (IORCT {maze = Just m, guyPos = p}) = do
 {-
 Draws the robot if it exists
 -}
-drawGuy Nothing dx dy = return ()
-drawGuy (Just (y, x)) dx dy = do
+drawGuy :: Point -> Double -> Double -> Render ()
+drawGuy (y, x) dx dy = do
   setSourceRGB 1 0 0
   let dx' = 0.2 * dx
   let dy' = 0.2 * dy
@@ -378,14 +384,14 @@ onNew ref dw gl csl fl = do
   -- 7. Add everything to IORef
   writeIORef ref $ r
     { maze = Just maze
-    , endPoint = Just (size, size)
-    , endTime = Just pLen
+    , endPoint = (size, size)
+    , endTime = pLen
     , gen = Just g'
     , cb = Just cb
-    , cGuy = Just 0
-    , guyPos = Just (1, 1)
-    , guyTime = Just 0
-    , plans = Just plans
+    , cGuy = 0
+    , guyPos = (1, 1)
+    , guyTime = 0
+    , plans = plans
     }
 
 {-
@@ -395,7 +401,7 @@ fillListStore :: Maybe (ListStore ListStoreType) -> Int -> IO ()
 fillListStore Nothing _ = return ()
 fillListStore (Just m) s = do
   listStoreClear m
-  mapM_ (\x -> listStoreAppend m (x, Nothing)) [1..s]
+  mapM_ (\x -> listStoreAppend m (x, 0)) [1..s]
 
 {-
 Action to do when clicking the about button.
