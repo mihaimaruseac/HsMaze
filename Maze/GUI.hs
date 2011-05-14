@@ -40,16 +40,18 @@ Type of the IORef used.
 -}
 data IORType = IORCT
   { maze :: Maybe Maze
+  , endPoint :: Maybe Point
   , gen :: Maybe StdGen
   , model :: Maybe (ListStore ListStoreType)
   }
+empty = IORCT Nothing Nothing Nothing Nothing
 
 {-
 Main window loop.
 -}
 mazeGUI = do
   -- 1. Get empty IORef
-  ref <- newIORef $ IORCT Nothing Nothing Nothing
+  ref <- newIORef $ empty
   -- 2. Init GTK
   initGUI
   window <- windowNew
@@ -173,10 +175,11 @@ buildPopulationInfo b r = do
 Builds the tree view for population display.
 -}
 buildPopulationDisplay :: VBox -> IORef IORType -> IO ()
-buildPopulationDisplay b r = do
+buildPopulationDisplay b ref = do
   -- 1. The model
   model <- listStoreNew [] -- empty for now
-  writeIORef r $ IORCT Nothing Nothing (Just model)
+  r <- readIORef ref
+  writeIORef ref $ r {model = (Just model)}
   -- 2. The view
   view <- treeViewNewWithModel model
   treeViewSetHeadersVisible view True
@@ -216,14 +219,14 @@ buildMazeArea b = do
 The actual drawing of the maze.
 -}
 drawMaze :: Double -> Double -> IORType -> Render()
-drawMaze w h (IORCT Nothing _ _) = do
+drawMaze w h (IORCT {maze = Nothing}) = do
   clean
   moveTo 0 0
   lineTo w h
   moveTo 0 h
   lineTo w 0
   stroke
-drawMaze w h (IORCT (Just m) _ _) = do
+drawMaze w h (IORCT {maze = Just m}) = do
   clean
   let size = snd . snd . A.bounds $ m
   let fIs = fromIntegral size
@@ -280,7 +283,7 @@ onNew ref dw = do
   -- 3. Complete IORef, return TODO
   r <- readIORef ref
   fillListStore (model r) popSize
-  writeIORef ref $ r {maze = Just maze, gen = Just g}
+  writeIORef ref $ r {maze = Just maze, endPoint = Just (3, 4), gen = Just g}
   -- 4. Invalidate drawing area
   (w, h) <- widgetGetSize dw
   widgetQueueDrawArea dw 0 0 w h
