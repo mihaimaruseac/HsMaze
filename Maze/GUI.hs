@@ -160,7 +160,6 @@ finishStep ref = do
   let newGen = 1 + generation r
   -- 3. Get new population by mutation and crossover
   let oldPop = V.zip (plans r) (V.fromList l)
-  print oldPop
   let (plans', g') = runState (newPopulation oldPop) (fromJust $ gen r)
   -- 4. Clear the ListStore
   mapM_ (\x -> listStoreSetValue ls x (x+1, 0)) [0 .. length l - 1]
