@@ -16,8 +16,6 @@ import qualified Data.Vector.Mutable as VM
 import Maze.Maze
 import Maze.Types
 
-import Debug.Trace
-
 {- The environment when testing a chromosome. -}
 type Env = (Maze, Plan)
 
@@ -85,15 +83,15 @@ manhattan (x, y) (x', y') = abs (x - x') + abs (y - y')
 {-
 Returns a new population from an older one, via crossover and mutation.
 -}
-newPopulation :: V.Vector (Plan, Fitness) -> State StdGen (V.Vector Plan)
-newPopulation p = do
+newPopulation :: V.Vector (Plan, Fitness) -> Double -> State StdGen (V.Vector Plan)
+newPopulation p mRate = do
   let sp = sortBy (\(x, y) (x', y') -> y `compare` y') $ V.toList p
   let len = length sp
   let slots = V.fromList $ getSlots 1 1 sp
   let numSlots = snd . V.last $ slots
   ps <- replicateM len (selectFromPopulation numSlots slots)
   nps <- mapM cross $ group2 ps
-  newPlans <- mapM mutate $ ungroup2 nps
+  newPlans <- mapM (mutate mRate) $ ungroup2 nps
   return $ V.fromList newPlans
 
 {-
@@ -110,16 +108,14 @@ cross (p1, p2) = do
 {-
 Does the mutation of a chromosome.
 -}
-mutate :: Plan -> State StdGen Plan
-mutate p = do
+mutate :: Double -> Plan -> State StdGen Plan
+mutate mRate p = do
   pmutate <- state random
-  if pmutate < (0.1 :: Double)
-  then do
+  if pmutate > mRate then return p else do
     let l = V.length p
     r <- state $ randomR (0, l - 1)
     rv <- getRandomDir
     return $ mutatePlan p r rv
-  else return p
 
 {-
 Does the actual mutation of a plan.

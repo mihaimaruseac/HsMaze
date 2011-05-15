@@ -19,8 +19,6 @@ import Maze.Maze
 import Maze.Types
 import Maze.Plan
 
-import Debug.Trace
-
 {-
 Used to construct and update the GUI.
 -}
@@ -69,8 +67,9 @@ data IORType = IORCT
   , cb :: Maybe HandlerId
   , bestFitness :: Int
   , generation :: Int
+  , mRate :: Double
   }
-empty = IORCT Nothing (0, 0) 0 0 (0, 0) 0 V.empty Nothing Nothing Nothing (-100) 0
+empty = IORCT Nothing (0, 0) 0 0 (0, 0) 0 V.empty Nothing Nothing Nothing (-100) 0 0.0
 
 instance Show IORType where
   show x = show (maze x) ++ " " ++ show (endPoint x) ++ " " ++ show (endTime x) ++ " " ++ show (cGuy x) ++ " " ++ show (guyPos x) ++ " " ++ show (guyTime x) ++ " " ++ show (plans x) ++ " " ++ show (gen x) ++ " " ++ cm ++ ccb
@@ -81,14 +80,6 @@ instance Show IORType where
       ccb = case cb x of
         Nothing -> "?"
         _ -> "."
-
-{-
-{-
-Function to be called when a new generation is to be generated.
--}
-newGenerationFunc :: IORType -> IORType
-newGenerationFunc r = r { cGuy = 0, guyPos = (1, 1), guyTime = 0}
--}
 
 {-
 Real evolution function. Will update IORType record.
@@ -109,7 +100,6 @@ evolveFunc r@(IORCT
   -- simulation ended
   | t == endt || pos == endp = (r { guyPos = (1, 1), guyTime = 0, cGuy = guy + 1},
     end r)
-evolveFunc a = trace (show a) undefined
 
 {-
 Evolution.
@@ -127,7 +117,7 @@ evolve ref gl csl fl dw = do
     (True, i, f) -> do
       listStoreSetValue m i (i + 1, f)
       if i == l - 1
-      then do --modifyIORef ref newGenerationFunc
+      then do
         finishStep ref
       else return ()
     _ -> return () -- ignore
@@ -160,7 +150,7 @@ finishStep ref = do
   let newGen = 1 + generation r
   -- 3. Get new population by mutation and crossover
   let oldPop = V.zip (plans r) (V.fromList l)
-  let (plans', g') = runState (newPopulation oldPop) (fromJust $ gen r)
+  let (plans', g') = runState (newPopulation oldPop (mRate r)) (fromJust $ gen r)
   -- 4. Clear the ListStore
   mapM_ (\x -> listStoreSetValue ls x (x+1, 0)) [0 .. length l - 1]
   -- 5. Create the new IORef
@@ -436,8 +426,9 @@ onNew :: IORef IORType -> DrawingArea-> Label -> Label -> Label -> IO ()
 onNew ref dw gl csl fl = do
   -- 1. Present config dialog and get options TODO
   let popSize = 10
+  let mRate = 0.1
   -- 2. Get maze
-  let (maze, g) = runState (genMaze (3, 3)) (mkStdGen 42)
+  let (maze, g) = runState (genMaze (15, 15)) (mkStdGen 42)
   -- 3. Fill ListStore from IORef
   r <- readIORef ref
   fillListStore (model r) popSize
@@ -467,6 +458,7 @@ onNew ref dw gl csl fl = do
     , plans = plans
     , bestFitness = -10000
     , generation = 1
+    , mRate = mRate
     }
 
 {-
