@@ -87,14 +87,14 @@ Returns a new population from an older one, via crossover and mutation.
 -}
 newPopulation :: V.Vector (Plan, Fitness) -> Double -> State StdGen (V.Vector Plan)
 newPopulation p mRate = do
-  let sp = sortBy (\(x, y) (x', y') -> y `compare` y') $ V.toList p
+  let b1:b2:sp = sortBy (\(x, y) (x', y') -> y' `compare` y) $ V.toList p
   let len = length sp
-  let slots = V.fromList $ getSlots 1 1 sp
+  let slots = V.fromList $ getSlots 1 1 $ reverse sp
   let numSlots = snd . V.last $ slots
   ps <- replicateM len (selectFromPopulation numSlots slots)
   nps <- mapM cross $ group2 ps
-  newPlans <- mapM (mutate mRate) $ ungroup2 nps
-  return $ V.fromList newPlans
+  newPlans <- mapM (mutate mRate) $ fst b2 : ungroup2 nps
+  return $ V.fromList $ fst b1 : newPlans
 
 {-
 Does the crossover between two chromosomes.
