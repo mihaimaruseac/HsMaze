@@ -49,7 +49,7 @@ notFinished = (False, 0, 0)
 -- simulation ended
 end :: IORType -> FinishInfo
 end r = (True, cGuy r,
-  fitness (guyPos r) (guyTime r) (endPoint r) (endTime r))
+  fitness (guyPos r) (guyTime r) (endPoint r) (endTime r) (guysBestDist r))
 
 {-
 Type of the IORef used.
@@ -61,6 +61,7 @@ data IORType = IORCT
   , cGuy :: Int
   , guyPos :: Point
   , guyTime :: Time
+  , guysBestDist :: Int
   , plans :: V.Vector Plan
   , gen :: Maybe StdGen
   , model :: Maybe (ListStore ListStoreType)
@@ -69,17 +70,7 @@ data IORType = IORCT
   , generation :: Int
   , mRate :: Double
   }
-empty = IORCT Nothing (0, 0) 0 0 (0, 0) 0 V.empty Nothing Nothing Nothing (-100) 0 0.0
-
-instance Show IORType where
-  show x = show (maze x) ++ " " ++ show (endPoint x) ++ " " ++ show (endTime x) ++ " " ++ show (cGuy x) ++ " " ++ show (guyPos x) ++ " " ++ show (guyTime x) ++ " " ++ show (plans x) ++ " " ++ show (gen x) ++ " " ++ cm ++ ccb
-    where
-      cm = case model x of
-        Nothing -> "?"
-        _ -> "."
-      ccb = case cb x of
-        Nothing -> "?"
-        _ -> "."
+empty = IORCT Nothing (0, 0) 0 0 (0, 0) 0 1000 V.empty Nothing Nothing Nothing (-100) 0 0.0
 
 {-
 Real evolution function. Will update IORType record.
@@ -92,14 +83,22 @@ evolveFunc r@(IORCT
   , cGuy = guy
   , guyPos = pos
   , guyTime = t
+  , guysBestDist = bd
   , plans = ps
   })
   -- normal case: in the middle of simulation
   | t < endt && pos /= endp = let (p, t') = doStep (m, ps V.! guy) (pos, t)
-    in (r { guyPos = p, guyTime = t'}, notFinished)
+    in (r
+      { guyPos = p
+      , guyTime = t'
+      , guysBestDist = min bd $ manhattan p endp
+      } , notFinished)
   -- simulation ended
-  | t == endt || pos == endp = (r { guyPos = (1, 1), guyTime = 0, cGuy = guy + 1},
-    end r)
+  | t == endt || pos == endp = (r
+    { guyPos = (1, 1)
+    , guyTime = 0
+    , cGuy = guy + 1
+    , guysBestDist = (snd endp) * (snd endp)}, end r)
 
 {-
 Evolution.
@@ -428,7 +427,7 @@ onNew ref dw gl csl fl = do
   let popSize = 10
   let mRate = 0.1
   -- 2. Get maze
-  let (maze, g) = runState (genMaze (15, 15)) (mkStdGen 42)
+  let (maze, g) = runState (genMaze (3, 3)) (mkStdGen 42)
   -- 3. Fill ListStore from IORef
   r <- readIORef ref
   fillListStore (model r) popSize

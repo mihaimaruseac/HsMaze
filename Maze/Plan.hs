@@ -16,6 +16,8 @@ import qualified Data.Vector.Mutable as VM
 import Maze.Maze
 import Maze.Types
 
+import Debug.Trace
+
 {- The environment when testing a chromosome. -}
 type Env = (Maze, Plan)
 
@@ -71,8 +73,8 @@ getRandomDir = do
 {-
 Computes the fitness of a plan.
 -}
-fitness :: Point -> Time -> Point -> Time -> Fitness
-fitness p t ep et = 100 * (et - t) - 3 * manhattan p ep
+fitness :: Point -> Time -> Point -> Time -> Int -> Fitness
+fitness p t ep et bd = 100 * (et - t) - 3 * manhattan p ep - 10 * bd
 
 {-
 Gets the manhattan distance between two points.
