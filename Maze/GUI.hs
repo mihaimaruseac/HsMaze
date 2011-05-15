@@ -49,7 +49,7 @@ notFinished = (False, 0, 0)
 -- simulation ended
 end :: IORType -> FinishInfo
 end r = (True, cGuy r, fitness (guyPos r) (guyTime r) (endPoint r) (endTime r)
-  (guysBestDist r))
+  (guysBestDist r) (guyVis r))
 
 {-
 Type of the IORef used.
@@ -62,6 +62,7 @@ data IORType = IORCT
   , guyPos :: Point
   , guyTime :: Time
   , guysBestDist :: Int
+  , guyVis :: [Point]
   , plans :: V.Vector Plan
   , gen :: Maybe StdGen
   , model :: Maybe (ListStore ListStoreType)
@@ -70,7 +71,7 @@ data IORType = IORCT
   , generation :: Int
   , mRate :: Double
   }
-empty = IORCT Nothing (0, 0) 0 0 (0, 0) 0 1000 V.empty Nothing Nothing Nothing (-100) 0 0.0
+empty = IORCT Nothing (0, 0) 0 0 (0, 0) 0 1000 [] V.empty Nothing Nothing Nothing (-100) 0 0.0
 
 {-
 Real evolution function. Will update IORType record.
@@ -83,6 +84,7 @@ evolveFunc r@(IORCT
   , cGuy = guy
   , guyPos = pos
   , guyTime = t
+  , guyVis = v
   , guysBestDist = bd
   , plans = ps
   })
@@ -91,6 +93,7 @@ evolveFunc r@(IORCT
     in (r
       { guyPos = p
       , guyTime = t'
+      , guyVis = if p `elem` v then v else p : v
       , guysBestDist = min bd $ manhattan p endp
       } , notFinished)
   -- simulation ended
@@ -99,6 +102,7 @@ evolveFunc r@(IORCT
     , guyTime = 0
     , cGuy = guy + 1
     , guysBestDist = (snd endp) * (snd endp)
+    , guyVis = []
     }, end r)
 
 {-
@@ -426,7 +430,7 @@ onNew :: IORef IORType -> DrawingArea-> Label -> Label -> Label -> IO ()
 onNew ref dw gl csl fl = do
   -- 1. Present config dialog and get options TODO
   let popSize = 10
-  let mRate = 0.01
+  let mRate = 0.5
   -- 2. Get maze
   let (maze, g) = runState (genMaze (5, 5)) (mkStdGen 42)
   -- 3. Fill ListStore from IORef

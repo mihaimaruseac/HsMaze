@@ -36,9 +36,10 @@ Take one action.
 -}
 takeAct :: Cell -> Cardinal -> Point -> Point
 --takeAct (C l) d p = if d `elem` l then move d p else p
-takeAct c@(C l) d p
-  = if d `elem` l then move d p else if E `elem` l then move E p
-  else if S `elem` l then move S p else p
+takeAct c@(C l) d p = if d `elem` l then move d p else takeAct c (next d) p
+  where
+    next W = N
+    next d = succ d
 
 {-
 Move in one direction.
@@ -79,19 +80,24 @@ Fitness weights
 fTIME = 100
 fDIST = -3
 fBDIST = -5
-fAREA = 1
+fAREA = 0
+fVIS = 50
+fCOL = 20
 
 {-
 Computes the fitness of a plan.
 -}
-fitness :: Point -> Time -> Point -> Time -> Int -> Fitness
-fitness p t ep et bd
+fitness :: Point -> Time -> Point -> Time -> Int -> [Point] -> Fitness
+fitness p t ep et bd vis
   = fTIME * (et - t)
   + fDIST * manhattan p ep
   + fBDIST * bd
-  + fAREA * fst p * snd p
+  + fAREA * mc * mr
+  + fVIS * length vis
+  + fCOL * mc
   where
-    s = snd ep
+    mr = maximum (map snd vis)
+    mc = maximum (map fst vis)
 
 {-
 Gets the manhattan distance between two points.
@@ -104,14 +110,14 @@ Returns a new population from an older one, via crossover and mutation.
 -}
 newPopulation :: V.Vector (Plan, Fitness) -> Double -> State StdGen (V.Vector Plan)
 newPopulation p mRate = do
-  let sp = sortBy (\(x, y) (x', y') -> y' `compare` y) $ V.toList p
+  let ss@(s:s':sp) = sortBy (\(x, y) (x', y') -> y' `compare` y) $ V.toList p
   let len = length sp
-  let slots = V.fromList $ getSlots 1 1 $ reverse sp
+  let slots = V.fromList $ getSlots 1 1 $ reverse ss
   let numSlots = snd . V.last $ slots
   ps <- replicateM len (selectFromPopulation numSlots slots)
   nps <- mapM cross $ group2 ps
   newPlans <- mapM (mutate mRate) $ ungroup2 nps
-  return $ V.fromList $ newPlans
+  return $ V.fromList $ (map fst [s, s']) ++ newPlans
 
 {-
 Does the crossover between two chromosomes.
