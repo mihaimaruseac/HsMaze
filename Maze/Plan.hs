@@ -71,10 +71,40 @@ getRandomDir = do
   return $ toEnum r
 
 {-
+Fitness weights
+-}
+fTIME = 100
+fDIST = -3
+fBDIST = -10
+fBLOCKS = -1
+fLOOPS = -2
+
+{-
 Computes the fitness of a plan.
 -}
-fitness :: Point -> Time -> Point -> Time -> Int -> Fitness
-fitness p t ep et bd = 100 * (et - t) - 3 * manhattan p ep - 10 * bd
+fitness :: Point -> Time -> Point -> Time -> Int -> Int -> Plan -> Fitness
+fitness p t ep et bd bl pl
+  = fTIME * (et - t)
+  + fDIST * manhattan p ep
+  + fBLOCKS * bd
+  + fBLOCKS * bl
+  + fLOOPS * (loops . V.toList $ pl)
+
+{-
+Get the number of loops contained in a plan.
+-}
+loops :: [Cardinal] -> Int
+loops pl = getLoopsAux . map cartez $ pl
+  where
+    cartez E = (1, 0)
+    cartez W = (-1, 0)
+    cartez S = (0, 1)
+    cartez N = (0, -1)
+    getLoopsAux (c:cs) = getLoops c cs + getLoopsAux cs
+    getLoopsAux [] = 0
+    getLoops c (c':cs) = if c == (0, 0) then 1 else getLoops (c |+| c') cs
+    getLoops _ [] = 0
+    (x, y) |+| (x', y') = (x + x', y + y')
 
 {-
 Gets the manhattan distance between two points.
@@ -87,14 +117,14 @@ Returns a new population from an older one, via crossover and mutation.
 -}
 newPopulation :: V.Vector (Plan, Fitness) -> Double -> State StdGen (V.Vector Plan)
 newPopulation p mRate = do
-  let b1:b2:sp = sortBy (\(x, y) (x', y') -> y' `compare` y) $ V.toList p
+  let sp = sortBy (\(x, y) (x', y') -> y' `compare` y) $ V.toList p
   let len = length sp
   let slots = V.fromList $ getSlots 1 1 $ reverse sp
   let numSlots = snd . V.last $ slots
   ps <- replicateM len (selectFromPopulation numSlots slots)
   nps <- mapM cross $ group2 ps
-  newPlans <- mapM (mutate mRate) $ fst b2 : ungroup2 nps
-  return $ V.fromList $ fst b1 : newPlans
+  newPlans <- mapM (mutate mRate) $ ungroup2 nps
+  trace (show $ fst $ sp !! 0) $return $ V.fromList $ newPlans
 
 {-
 Does the crossover between two chromosomes.
