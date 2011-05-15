@@ -28,7 +28,7 @@ Global constant values.
 -}
 gTITLE = "Robot in a maze"
 gLOGO = "res/icon.png"
-gTIME = 100
+gTIME = 50
 
 {-
 Type of the ListStore used in GUI.
@@ -431,9 +431,9 @@ onNew :: IORef IORType -> DrawingArea-> Label -> Label -> Label -> IO ()
 onNew ref dw gl csl fl = do
   -- 1. Present config dialog and get options TODO
   let popSize = 10
-  let mRate = 0.1
+  let mRate = 0.01
   -- 2. Get maze
-  let (maze, g) = runState (genMaze (3, 3)) (mkStdGen 42)
+  let (maze, g) = runState (genMaze (5, 5)) (mkStdGen 42)
   -- 3. Fill ListStore from IORef
   r <- readIORef ref
   fillListStore (model r) popSize

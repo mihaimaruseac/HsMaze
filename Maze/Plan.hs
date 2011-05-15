@@ -75,9 +75,12 @@ Fitness weights
 -}
 fTIME = 100
 fDIST = -3
-fBDIST = -10
+fBDIST = -5
 fBLOCKS = -1
-fLOOPS = -2
+fLOOPS = -20
+fLINE = -5
+fCOL = -2
+fAREA = 1
 
 {-
 Computes the fitness of a plan.
@@ -89,6 +92,11 @@ fitness p t ep et bd bl pl
   + fBLOCKS * bd
   + fBLOCKS * bl
   + fLOOPS * (loops . V.toList $ pl)
+  + fLINE * (s - fst p)
+  + fCOL * (s - snd p)
+  + fAREA * fst p * snd p
+  where
+    s = snd ep
 
 {-
 Get the number of loops contained in a plan.
@@ -124,7 +132,7 @@ newPopulation p mRate = do
   ps <- replicateM len (selectFromPopulation numSlots slots)
   nps <- mapM cross $ group2 ps
   newPlans <- mapM (mutate mRate) $ ungroup2 nps
-  trace (show $ fst $ sp !! 0) $return $ V.fromList $ newPlans
+  return $ V.fromList $ newPlans
 
 {-
 Does the crossover between two chromosomes.
