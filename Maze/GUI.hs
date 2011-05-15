@@ -48,9 +48,8 @@ notFinished = (False, 0, 0)
 
 -- simulation ended
 end :: IORType -> FinishInfo
-end r = (True, cGuy r,
-  fitness (guyPos r) (guyTime r) (endPoint r) (endTime r) (guysBestDist r)
-  (guyBlocks r) ((plans r) V.! (cGuy r)))
+end r = (True, cGuy r, fitness (guyPos r) (guyTime r) (endPoint r) (endTime r)
+  (guysBestDist r))
 
 {-
 Type of the IORef used.
@@ -63,7 +62,6 @@ data IORType = IORCT
   , guyPos :: Point
   , guyTime :: Time
   , guysBestDist :: Int
-  , guyBlocks :: Int
   , plans :: V.Vector Plan
   , gen :: Maybe StdGen
   , model :: Maybe (ListStore ListStoreType)
@@ -72,7 +70,7 @@ data IORType = IORCT
   , generation :: Int
   , mRate :: Double
   }
-empty = IORCT Nothing (0, 0) 0 0 (0, 0) 0 1000 0 V.empty Nothing Nothing Nothing (-100) 0 0.0
+empty = IORCT Nothing (0, 0) 0 0 (0, 0) 0 1000 V.empty Nothing Nothing Nothing (-100) 0 0.0
 
 {-
 Real evolution function. Will update IORType record.
@@ -86,7 +84,6 @@ evolveFunc r@(IORCT
   , guyPos = pos
   , guyTime = t
   , guysBestDist = bd
-  , guyBlocks = bl
   , plans = ps
   })
   -- normal case: in the middle of simulation
@@ -95,7 +92,6 @@ evolveFunc r@(IORCT
       { guyPos = p
       , guyTime = t'
       , guysBestDist = min bd $ manhattan p endp
-      , guyBlocks = if p == pos then bl + 1 else bl
       } , notFinished)
   -- simulation ended
   | t == endt || pos == endp = (r
@@ -103,7 +99,6 @@ evolveFunc r@(IORCT
     , guyTime = 0
     , cGuy = guy + 1
     , guysBestDist = (snd endp) * (snd endp)
-    , guyBlocks = 0
     }, end r)
 
 {-

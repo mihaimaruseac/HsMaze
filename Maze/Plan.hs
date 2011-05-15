@@ -35,7 +35,10 @@ doStep (m, p) (pos, t) = (takeAct (m A.! pos) (p V.! t) pos, t + 1)
 Take one action.
 -}
 takeAct :: Cell -> Cardinal -> Point -> Point
-takeAct (C l) d p = if d `elem` l then move d p else p
+--takeAct (C l) d p = if d `elem` l then move d p else p
+takeAct c@(C l) d p
+  = if d `elem` l then move d p else if E `elem` l then move E p
+  else if S `elem` l then move S p else p
 
 {-
 Move in one direction.
@@ -76,43 +79,19 @@ Fitness weights
 fTIME = 100
 fDIST = -3
 fBDIST = -5
-fBLOCKS = -1
-fLOOPS = -20
-fLINE = -5
-fCOL = -2
 fAREA = 1
 
 {-
 Computes the fitness of a plan.
 -}
-fitness :: Point -> Time -> Point -> Time -> Int -> Int -> Plan -> Fitness
-fitness p t ep et bd bl pl
+fitness :: Point -> Time -> Point -> Time -> Int -> Fitness
+fitness p t ep et bd
   = fTIME * (et - t)
   + fDIST * manhattan p ep
-  + fBLOCKS * bd
-  + fBLOCKS * bl
-  + fLOOPS * (loops . V.toList $ pl)
-  + fLINE * (s - fst p)
-  + fCOL * (s - snd p)
+  + fBDIST * bd
   + fAREA * fst p * snd p
   where
     s = snd ep
-
-{-
-Get the number of loops contained in a plan.
--}
-loops :: [Cardinal] -> Int
-loops pl = getLoopsAux . map cartez $ pl
-  where
-    cartez E = (1, 0)
-    cartez W = (-1, 0)
-    cartez S = (0, 1)
-    cartez N = (0, -1)
-    getLoopsAux (c:cs) = getLoops c cs + getLoopsAux cs
-    getLoopsAux [] = 0
-    getLoops c (c':cs) = if c == (0, 0) then 1 else getLoops (c |+| c') cs
-    getLoops _ [] = 0
-    (x, y) |+| (x', y') = (x + x', y + y')
 
 {-
 Gets the manhattan distance between two points.
