@@ -428,11 +428,10 @@ Action to do when clicking the New button.
 -}
 onNew :: IORef IORType -> DrawingArea-> Label -> Label -> Label -> IO ()
 onNew ref dw gl csl fl = do
-  -- 1. Present config dialog and get options TODO
-  let popSize = 10
-  let mRate = 0.5
+  -- 1. Present config dialog and get options
+  (popSize, mRate, mSize) <- showConfigDialog
   -- 2. Get maze
-  let (maze, g) = runState (genMaze (5, 5)) (mkStdGen 42)
+  let (maze, g) = runState (genMaze (mSize, mSize)) (mkStdGen 42)
   -- 3. Fill ListStore from IORef
   r <- readIORef ref
   fillListStore (model r) popSize
@@ -494,4 +493,58 @@ onAbout = do
     ]
   dialogRun d
   widgetDestroy d
+
+{-
+Shows the configuration dialog to select several options.
+-}
+showConfigDialog :: IO (Int, Double, Int)
+showConfigDialog = do
+  -- 1. Construct dialog
+  d <- dialogNew
+  pbuff <- pixbufNewFromFile gLOGO
+  set d
+    [ windowTitle := gTITLE
+    , windowIcon := Just pbuff
+    ]
+  -- 2. Add buttons and widgets
+  dialogAddButton d stockOk ResponseOk
+  (ms, ps, mr) <- completeConfigDialog d
+  -- 3. Run dialog, read option, destroy dialog and return
+  widgetShowAll d
+  dialogRun d
+  widgetDestroy d
+  popSize <- spinButtonGetValueAsInt ps
+  mRate <- spinButtonGetValue mr
+  mSize <- spinButtonGetValueAsInt ms
+  return (popSize, mRate, mSize)
+
+{-
+Builds the GUI from the config dialog.
+-}
+completeConfigDialog :: Dialog -> IO (SpinButton, SpinButton, SpinButton)
+completeConfigDialog d = do
+  u <- dialogGetUpper d
+  t <- tableNew 3 2 True
+  boxPackStart u t PackNatural 0
+  ms <- newConfig t 0 "Maze size:" 3 3 15 1 0
+  ps <- newConfig t 1 "Population size:" 10 10 50 2 0
+  mr <- newConfig t 2 "Mutation rate:" 0 0 1 0.1 1
+  return (ms, ps, mr)
+
+{-
+Builds and attaches a configuration to a table.
+-}
+newConfig :: Table -> Int -> String -> Double -> Double -> Double -> Double -> Int -> IO SpinButton
+newConfig t x title init min max incr digs = do
+  l <- labelNew $ Just title
+  tableAttachDefaults t l 0 1 x (x + 1)
+  b <- spinButtonNewWithRange min max incr
+  set b
+    [ spinButtonDigits := digs
+    , spinButtonWrap := True
+    , spinButtonSnapToTicks := True
+    , spinButtonValue := init
+    ]
+  tableAttachDefaults t b 1 2 x (x + 1)
+  return b
 
