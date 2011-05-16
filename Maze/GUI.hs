@@ -482,6 +482,7 @@ onNew ref dw gl csl fl = do
     , plans = plans
     , bestFitness = -10000
     , generation = 1
+    , bestPlan = Nothing
     , mRate = mRate
     }
 
@@ -547,9 +548,9 @@ completeConfigDialog d = do
   u <- dialogGetUpper d
   t <- tableNew 3 2 True
   boxPackStart u t PackNatural 0
-  ms <- newConfig t 0 "Maze size:" 3 3 15 1 0
+  ms <- newConfig t 0 "Maze size:" 5 3 15 1 0
   ps <- newConfig t 1 "Population size:" 10 10 50 2 0
-  mr <- newConfig t 2 "Mutation rate:" 0 0 1 0.1 1
+  mr <- newConfig t 2 "Mutation rate:" 0.2 0 1 0.1 1
   return (ms, ps, mr)
 
 {-
