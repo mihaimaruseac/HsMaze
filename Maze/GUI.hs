@@ -4,9 +4,9 @@ where
 import qualified Array as A
 import qualified Data.Vector as V
 
-import Control.Monad.State (when, runState)
+import Control.Monad.State (when, runState, foldM)
 import Data.IORef (IORef, readIORef, writeIORef, newIORef)
-import Data.List ((\\))
+import Data.List ((\\), elemIndex)
 import Data.Maybe (fromJust)
 import System.Random (randomR, StdGen, mkStdGen)
 
@@ -16,6 +16,8 @@ import Graphics.UI.Gtk hiding (Point)
 import Maze.Maze
 import Maze.Types
 import Maze.Plan
+
+import Debug.Trace
 
 {-
 Used to construct and update the GUI.
@@ -66,10 +68,11 @@ data IORType = IORCT
   , model :: Maybe (ListStore ListStoreType)
   , cb :: Maybe HandlerId
   , bestFitness :: Int
+  , bestPlan :: Maybe Plan
   , generation :: Int
   , mRate :: Double
   }
-empty = IORCT Nothing (0, 0) 0 0 (0, 0) 0 1000 [] V.empty Nothing Nothing Nothing (-100) 0 0.0
+empty = IORCT Nothing (0, 0) 0 0 (0, 0) 0 1000 [] V.empty Nothing Nothing Nothing (-100) Nothing 0 0.0
 
 {-
 Real evolution function. Will update IORType record.
@@ -147,6 +150,7 @@ finishStep ref = do
   let f = bestFitness r
   let m' = max m f
   let newGen = 1 + generation r
+  let bestPlan = (plans r) V.! (fromJust $ elemIndex m l)
   -- 3. Get new population by mutation and crossover
   let oldPop = V.zip (plans r) (V.fromList l)
   let (plans', g') = runState (newPopulation oldPop (mRate r)) (fromJust $ gen r)
@@ -161,6 +165,7 @@ finishStep ref = do
     , plans = plans'
     , bestFitness = m'
     , generation = newGen
+    , bestPlan = Just bestPlan
     }
 
 {-
@@ -353,33 +358,53 @@ drawMaze w h (IORCT {maze = Nothing}) = do
   moveTo 0 h
   lineTo w 0
   stroke
-drawMaze w h (IORCT {maze = Just m, guyPos = p}) = do
+drawMaze w h r@(IORCT {maze = Just m, guyPos = p}) = do
   clean
   let size = snd . snd . A.bounds $ m
   let fIs = fromIntegral size
-  let dx = w / fIs
-  let dy = h / fIs
-  mapM_ (drawWalls m size dx dy) (A.indices m)
+  let dx = w / fIs -- aspect ratio is 1
+  mapM_ (drawWalls m size dx) (A.indices m)
   stroke
-  drawGuy p dx dy
+  drawPath (bestPlan r) m dx
+  drawGuy p dx
 
 {-
 Draws the robot if it exists
 -}
-drawGuy :: Point -> Double -> Double -> Render ()
-drawGuy (y, x) dx dy = do
+drawGuy :: Point -> Double -> Render ()
+drawGuy (y, x) dx = do
   setSourceRGB 1 0 0
   let dx' = 0.2 * dx
-  let dy' = 0.2 * dy
   let x' = dx * fromIntegral x - dx'
-  let y' = dy * fromIntegral y - dy'
+  let y' = dx * fromIntegral y - dx'
   let x'' = x' - dx + 2 * dx'
-  let y'' = y' - dy + 2 * dy'
+  let y'' = y' - dx + 2 * dx'
   moveTo x' y'
   lineTo x'' y''
   moveTo x'' y'
   lineTo x' y''
   stroke
+
+{-
+Draws the best plan so far.
+-}
+drawPath :: Maybe Plan -> Maze -> Double -> Render ()
+drawPath Nothing _ _ = return ()
+drawPath (Just p) m dx = do
+  setSourceRGB 0 1 1
+  let l = V.length p
+  moveTo (dx / 2) (dx / 2)
+  foldM (drawPathStep (m, p) dx) (1, 1) [0 .. l - 1]
+  stroke
+
+{-
+Draw a single step from the best plan.
+-}
+drawPathStep :: (Maze, Plan) -> Double -> Point -> Time -> Render Point
+drawPathStep mp dx pos t = do
+  let ((x, y), _) = doStep mp (pos, t)
+  lineTo (fromIntegral y * dx - dx / 2) (fromIntegral x * dx - dx / 2)
+  return (x, y)
 
 {-
 Cleanup of drawing area.
@@ -393,11 +418,11 @@ clean = do
 {-
 Draws wall for a single cell.
 -}
-drawWalls :: Maze -> Int -> Double -> Double -> Point -> Render ()
-drawWalls m s dx dy p@(x, y) = mapM_ (renderOneWall dx dy y' x') walls
+drawWalls :: Maze -> Int -> Double -> Point -> Render ()
+drawWalls m s dx p@(x, y) = mapM_ (renderOneWall dx y' x') walls
   where
     x' = dx * fromIntegral x + if x == 1 then 1 else if x == s then -1 else 0
-    y' = dy * fromIntegral y + if y == 1 then 1 else if y == s then -1 else 0
+    y' = dx * fromIntegral y + if y == 1 then 1 else if y == s then -1 else 0
     frees = (\(C l) -> l) $ m A.! p
     l = if y == 1 then if x == 1 then [] else [N] else [W]
     walls = ([N, E, S, W] \\ frees) \\ l
@@ -405,19 +430,19 @@ drawWalls m s dx dy p@(x, y) = mapM_ (renderOneWall dx dy y' x') walls
 {-
 Renders a single wall.
 -}
-renderOneWall :: Double -> Double -> Double -> Double -> Cardinal -> Render ()
-renderOneWall dx dy x y N = do
-  moveTo x (y - dy)
-  lineTo (x - dx) (y - dy)
-renderOneWall dx dy x y E = do
+renderOneWall :: Double -> Double -> Double -> Cardinal -> Render ()
+renderOneWall dx x y N = do
+  moveTo x (y - dx)
+  lineTo (x - dx) (y - dx)
+renderOneWall dx x y E = do
   moveTo x y
-  lineTo x (y - dy)
-renderOneWall dx dy x y S = do
+  lineTo x (y - dx)
+renderOneWall dx x y S = do
   moveTo x y
   lineTo (x - dx) y
-renderOneWall dx dy x y W = do
+renderOneWall dx x y W = do
   moveTo (x - dx) y
-  lineTo (x - dx) (y - dy)
+  lineTo (x - dx) (y - dx)
 
 {-
 Action to do when clicking the New button.
