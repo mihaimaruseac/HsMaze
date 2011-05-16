@@ -6,7 +6,7 @@ import qualified Data.Vector as V
 
 import Control.Monad.State (when, runState, foldM)
 import Data.IORef (IORef, readIORef, writeIORef, newIORef)
-import Data.List ((\\), elemIndex)
+import Data.List ((\\), elemIndex, sort)
 import Data.Maybe (fromJust)
 import System.Random (randomR, StdGen, mkStdGen)
 
@@ -149,14 +149,16 @@ finishStep ref = do
   let m = maximum l
   let f = bestFitness r
   let m' = max m f
-  let newGen = 1 + generation r
+  let cgeneration = generation r
   let bestPlan = (plans r) V.! (fromJust $ elemIndex m l)
-  -- 3. Get new population by mutation and crossover
+  -- 3. Output statistics
+  stats l cgeneration
+  -- 4. Get new population by mutation and crossover
   let oldPop = V.zip (plans r) (V.fromList l)
   let (plans', g') = runState (newPopulation oldPop (mRate r)) (fromJust $ gen r)
-  -- 4. Clear the ListStore
+  -- 5. Clear the ListStore
   mapM_ (\x -> listStoreSetValue ls x (x+1, 0)) [0 .. length l - 1]
-  -- 5. Create the new IORef
+  -- 6. Create the new IORef
   writeIORef ref $ r
     { cGuy = 0
     , guyPos = (1, 1)
@@ -164,15 +166,27 @@ finishStep ref = do
     , gen = Just g'
     , plans = plans'
     , bestFitness = m'
-    , generation = newGen
+    , generation = 1 + cgeneration
     , bestPlan = Just bestPlan
     }
+
+{-
+Outputs statistics about a population.
+-}
+stats :: [Fitness] -> Int -> IO ()
+stats l gen = do
+  let ls@(b:sb:_) = reverse . sort $ l
+  let avg = fromIntegral (sum ls) / fromIntegral (length ls)
+  let msg = show gen ++ "\t" ++ show b ++ "\t" ++ show sb ++ "\t" ++ show avg ++ "\n"
+  appendFile "trace" msg
 
 {-
 Main window loop.
 -}
 mazeGUI :: IO ()
 mazeGUI = do
+  -- 0. Cleanup old trace
+  writeFile "trace" ""
   -- 1. Get empty IORef
   ref <- newIORef empty
   -- 2. Init GTK
