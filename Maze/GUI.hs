@@ -322,6 +322,10 @@ Builds the tree view for population display.
 -}
 buildPopulationDisplay :: VBox -> IORef IORType -> IO ()
 buildPopulationDisplay b ref = do
+  -- 0. A scrolled window
+  sw <- scrolledWindowNew Nothing Nothing
+  scrolledWindowSetPolicy sw PolicyNever PolicyAutomatic
+  boxPackStart b sw PackGrow 0
   -- 1. The model
   model <- listStoreNew [] -- empty for now
   r <- readIORef ref
@@ -329,7 +333,7 @@ buildPopulationDisplay b ref = do
   -- 2. The view
   view <- treeViewNewWithModel model
   treeViewSetHeadersVisible view True
-  boxPackStart b view PackGrow 0
+  sw `containerAdd` view
   -- 3. Columns, accessors, etc
   buildColumn model view (show.fst) "Chromosome number"
   buildColumn model view (show.snd) "Fitness"
