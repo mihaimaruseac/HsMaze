@@ -4,7 +4,7 @@ where
 import qualified Array as A
 import qualified Data.Vector as V
 
-import Control.Monad.State (when, runState, foldM)
+import Control.Monad.State (when, runState, foldM_)
 import Data.IORef (IORef, readIORef, writeIORef, newIORef)
 import Data.List ((\\), elemIndex, sort)
 import Data.Maybe (fromJust)
@@ -150,7 +150,7 @@ finishStep ref = do
   let f = bestFitness r
   let m' = max m f
   let cgeneration = generation r
-  let bestPlan = (plans r) V.! (fromJust $ elemIndex m l)
+  let bestPlan = plans r V.! fromJust (elemIndex m l)
   -- 3. Output statistics
   stats l cgeneration
   -- 4. Get new population by mutation and crossover
@@ -412,7 +412,7 @@ drawPath (Just p) m dx = do
   setSourceRGB 0 1 1
   let l = V.length p
   moveTo (dx / 2) (dx / 2)
-  foldM (drawPathStep (m, p) dx) (1, 1) [0 .. l - 1]
+  foldM_ (drawPathStep (m, p) dx) (1, 1) [0 .. l - 1]
   stroke
 
 {-
