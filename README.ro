@@ -1,0 +1,78 @@
+Mihai Maruseac, 341C3
+INVA, Tema 4.7
+Algoritmi genetici
+
+1. Mod rulare
+^^^^^^^^^^^^^
+
+Se rulează
+
+    ./maze
+
+după construirea executabilului utilizând
+
+    make
+
+Se pot rula ambii pași simultan, rulând
+
+    make run
+
+Se setează parametrii înainte de generarea unui labirint nou și apoi se
+observă evoluția. Sunt scrise statistici în fișierul "trace", se poate folosi
+
+    ./plot.sh
+
+pentru a le afișa.
+
+2. Descriere generală
+^^^^^^^^^^^^^^^^^^^^^
+
+Implementarea este realizată în Haskell.
+
+Labirintul este generat aleator la începutul fiecărei simulări. S-a ales o
+generare utilizând algoritmul Sidewinder pentru a putea obține labirinturi
+destul de complicate într-un timp cât mai rapid.
+
+Deoarece labirintul generat are prima linie fără pereți, robotul se va deplasa
+mereu de la celula (1, 1) a labirintului până în colțul diametral opus. Dacă
+s-ar fi deplasat în sus, ar fi fost mult prea ușor de găsit o soluție simplă:
+mergi dreapta/stânga până la prima deschidere sus și repetă.
+
+Cromozomii reprezintă secvența de direcții în care va merge robotul. În cazul
+în care o direcție nu este validă, se încearcă următoarea în sens orar pentru
+a nu bloca robotul prea mult pe aceeași poziție.
+
+Evaluarea se face pe baza apropierii de celula țintă și pe baza numărului
+total de celule vizitate din labirint. Pentru a sparge simetria, se punctează
+și cea mai de jos linie pe care ajunge robotul.
+
+Deoarece planurile au o rată mare de insucces, mutația are efecte majore în
+evoluție. De cele mai multe ori, o rată de mutație sub 10% nu va genera
+soluția optimă (decât după un număr foarte mare de iterații, de multe ori
+posibilele avansuri fiind distruse la generația următoare).
+
+Pentru a asigura o convergență mai rapidă, se propagă de la o generație la
+următoarea primii doi indivizi. Celelalte sloturi se umplu cu algoritmul
+clasic.
+
+Selecția indivizilor se face pe baza metodei ruletei. Astfel, va conta doar
+ordinea relativă în funcție de fitness, nu și valoarea lui absolută.
+
+Estimativ, fitness-ul maxim care poate fi obținut pentru un labirint de
+dimensiune n este
+
+    100 * (n^2 - t) + 50 * t + 20 * n
+
+unde t este lungimea drumului minim de la intrare la ieșire.
+
+3. Conținut arhivă
+^^^^^^^^^^^^^^^^^^
+
+Arhiva conține:
+        * sursele implementării și Makefile corespunzător în directorul Maze/
+          și în directorul părinte
+        * folder-ul res/ conținând resursele aplicației
+        * fișierul README: acest fișier
+
+---
+
