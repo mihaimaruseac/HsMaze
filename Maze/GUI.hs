@@ -8,7 +8,7 @@ import Control.Monad.State (when, runState, foldM_)
 import Data.IORef (IORef, readIORef, writeIORef, newIORef)
 import Data.List ((\\), elemIndex, sort)
 import Data.Maybe (fromJust)
-import System.Random (randomR, StdGen, mkStdGen)
+import System.Random (randomR, StdGen, mkStdGen, newStdGen, randomIO)
 
 import Graphics.Rendering.Cairo
 import Graphics.UI.Gtk hiding (Point)
@@ -470,7 +470,9 @@ onNew ref dw gl csl fl = do
   -- 1. Present config dialog and get options
   (popSize, mRate, mSize) <- showConfigDialog
   -- 2. Get maze
-  let (maze, g) = runState (genMaze (mSize, mSize)) (mkStdGen 42)
+  gen <- newStdGen
+  seed <- randomIO
+  let (maze, g) = runState (genMaze (mSize, mSize)) (mkStdGen seed)
   -- 3. Fill ListStore from IORef
   r <- readIORef ref
   fillListStore (model r) popSize
