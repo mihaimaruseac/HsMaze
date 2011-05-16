@@ -1,8 +1,8 @@
 module Maze.Types
 where
 
-import Array
-import Data.Vector
+import Array (Array)
+import Data.Vector (Vector)
 
 {-
 Common types are presented in this file.

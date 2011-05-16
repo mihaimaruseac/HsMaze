@@ -1,13 +1,10 @@
-module Maze.Maze
+module Maze.Maze (genMaze)
 where
 
--- TODO: export only genMaze, hide others
-
-import Array
-import Control.Arrow
-import Control.Monad.State
-import Data.Array.ST
-import System.Random
+import Control.Arrow (first, second)
+import Control.Monad.State (state, State)
+import Data.Array.ST (runSTArray, newListArray, readArray, writeArray)
+import System.Random (StdGen, randomR)
 
 import Maze.Types
 
@@ -26,15 +23,15 @@ build :: Length -> Length -> [Point] -> [Point] -> Maze
 build sx sy ews ups = runSTArray $ do
   m <- newListArray ((1, 1), (sy, sx)) $ repeat $ C [E, W]
   -- 1. Block eastern walls (including first row's end)
-  mapM (blockCell m E) $ (sx, 1) : ews
+  mapM_ (blockCell m E) $ (sx, 1) : ews
   -- 2. Block western walls of corridors
-  mapM (blockCell m W) $ map (first (+1)) $ filter (fst . first (/= sx)) $ ews
+  mapM_ (blockCell m W . first (+1)) $ filter (fst . first (/= sx)) ews
   -- 3. Block starts of rows.
-  mapM (blockCell m W) $ map (\y -> (1, y)) [1 .. sy]
+  mapM_ (blockCell m W . (\y -> (1, y))) [1 .. sy]
   -- 4. Open northwards.
-  mapM (openCell m N) $ ups
+  mapM_ (openCell m N) ups
   -- 5. Open southwards
-  mapM (openCell m S) $ map (second (\x -> x - 1)) ups
+  mapM_ (openCell m S . second (subtract 1)) ups
   return m
 
 {-
@@ -65,7 +62,7 @@ gRP c sx y
 {-
 Block one cell from the maze, represented as an array.
 -}
--- blockCell :: (MArray a Cell m) => a Size Cell -> Cardinal -> Size -> m ()
+-- blockCell :: Data.Array.MArray Size Cell -> Cardinal -> Size -> m ()
 blockCell m d (x, y) = do
   e <- readArray m (y, x)
   writeArray m (y, x) $ block e d

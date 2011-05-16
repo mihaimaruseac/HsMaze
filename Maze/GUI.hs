@@ -1,19 +1,17 @@
-module Maze.GUI
+module Maze.GUI (mazeGUI)
 where
-
--- TODO export only mazeGUI, hide others
 
 import qualified Array as A
 import qualified Data.Vector as V
 
-import Control.Monad.State
-import Control.Monad.Trans (liftIO)
-import Data.IORef
+import Control.Monad.State (when, runState)
+import Data.IORef (IORef, readIORef, writeIORef, newIORef)
 import Data.List ((\\))
 import Data.Maybe (fromJust)
+import System.Random (randomR, StdGen, mkStdGen)
+
 import Graphics.Rendering.Cairo
 import Graphics.UI.Gtk hiding (Point)
-import System.Random
 
 import Maze.Maze
 import Maze.Types
@@ -101,7 +99,7 @@ evolveFunc r@(IORCT
     { guyPos = (1, 1)
     , guyTime = 0
     , cGuy = guy + 1
-    , guysBestDist = (snd endp) * (snd endp)
+    , guysBestDist = snd endp * snd endp
     , guyVis = []
     }, end r)
 
@@ -120,10 +118,7 @@ evolve ref gl csl fl dw = do
   case fI of
     (True, i, f) -> do
       listStoreSetValue m i (i + 1, f)
-      if i == l - 1
-      then do
-        finishStep ref
-      else return ()
+      when (i == l - 1) $ finishStep ref
     _ -> return () -- ignore
   -- 3. Invalidate drawing area and draw
   (w, h) <- widgetGetSize dw
@@ -171,9 +166,10 @@ finishStep ref = do
 {-
 Main window loop.
 -}
+mazeGUI :: IO ()
 mazeGUI = do
   -- 1. Get empty IORef
-  ref <- newIORef $ empty
+  ref <- newIORef empty
   -- 2. Init GTK
   initGUI
   window <- windowNew
@@ -227,7 +223,7 @@ buildToolbar b r dw gl csl fl = do
   -- 3. Add widgets
   let addF = addBtnToToolbar tb tp -- helper function
   bNew <- addF stockNew "Starts a new population, with a new maze"
-  bNew `onToolButtonClicked` (onNew r dw gl csl fl)
+  bNew `onToolButtonClicked` onNew r dw gl csl fl
   bAbout <- addF stockAbout "About this program"
   bAbout `onToolButtonClicked` onAbout
   addSeparator tb
@@ -400,8 +396,8 @@ Draws wall for a single cell.
 drawWalls :: Maze -> Int -> Double -> Double -> Point -> Render ()
 drawWalls m s dx dy p@(x, y) = mapM_ (renderOneWall dx dy y' x') walls
   where
-    x' = dx * (fromIntegral x) + if x == 1 then 1 else if x == s then -1 else 0
-    y' = dy * (fromIntegral y) + if y == 1 then 1 else if y == s then -1 else 0
+    x' = dx * fromIntegral x + if x == 1 then 1 else if x == s then -1 else 0
+    y' = dy * fromIntegral y + if y == 1 then 1 else if y == s then -1 else 0
     frees = (\(C l) -> l) $ m A.! p
     l = if y == 1 then if x == 1 then [] else [N] else [W]
     walls = ([N, E, S, W] \\ frees) \\ l

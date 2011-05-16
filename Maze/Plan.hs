@@ -1,22 +1,17 @@
-module Maze.Plan
+module Maze.Plan (doStep, manhattan, fitness, newPopulation,
+  getRandomInitialPlans)
 where
 
--- TODO: limit the exported symbols
-
-import Control.Arrow
-import Control.Monad.State
-import Data.Array.ST
+import Control.Arrow (first, second)
+import Control.Monad.State (state, State, replicateM)
 import Data.List (sortBy)
-import System.Random
+import System.Random (randomR, StdGen, random)
 
 import qualified Array as A
 import qualified Data.Vector as V
 import qualified Data.Vector.Mutable as VM
 
-import Maze.Maze
 import Maze.Types
-
-import Debug.Trace
 
 {- The environment when testing a chromosome. -}
 type Env = (Maze, Plan)
@@ -35,7 +30,6 @@ doStep (m, p) (pos, t) = (takeAct (m A.! pos) (p V.! t) pos, t + 1)
 Take one action.
 -}
 takeAct :: Cell -> Cardinal -> Point -> Point
---takeAct (C l) d p = if d `elem` l then move d p else p
 takeAct c@(C l) d p = if d `elem` l then move d p else takeAct c (next d) p
   where
     next W = N
@@ -80,7 +74,6 @@ Fitness weights
 fTIME = 100
 fDIST = -3
 fBDIST = -5
-fAREA = 0
 fVIS = 50
 fCOL = 20
 
@@ -92,12 +85,8 @@ fitness p t ep et bd vis
   = fTIME * (et - t)
   + fDIST * manhattan p ep
   + fBDIST * bd
-  + fAREA * mc * mr
   + fVIS * length vis
-  + fCOL * mc
-  where
-    mr = maximum (map snd vis)
-    mc = maximum (map fst vis)
+  + fCOL * maximum (map fst vis)
 
 {-
 Gets the manhattan distance between two points.
@@ -117,7 +106,7 @@ newPopulation p mRate = do
   ps <- replicateM len (selectFromPopulation numSlots slots)
   nps <- mapM cross $ group2 ps
   newPlans <- mapM (mutate mRate) $ ungroup2 nps
-  return $ V.fromList $ (map fst [s, s']) ++ newPlans
+  return $ V.fromList $ map fst [s, s'] ++ newPlans
 
 {-
 Does the crossover between two chromosomes.
@@ -160,7 +149,7 @@ selectFromPopulation m ps = do
 Finds the actual chromosome via roulette.
 -}
 findRoulette :: Int -> V.Vector (Plan, Int) -> Plan
-findRoulette ix ps = fst . V.head $ V.dropWhile (\(x, y) -> ix > y) ps
+findRoulette ix = fst . V.head . V.dropWhile (\(x, y) -> ix > y)
 
 {-
 Gets the slots for each vector.
