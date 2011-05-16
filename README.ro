@@ -47,7 +47,7 @@ total de celule vizitate din labirint. Pentru a sparge simetria, se punctează
 și cea mai de jos linie pe care ajunge robotul.
 
 Deoarece planurile au o rată mare de insucces, mutația are efecte majore în
-evoluție. De cele mai multe ori, o rată de mutație sub 10% nu va genera
+evoluție. De cele mai multe ori, o rată de mutație sub 20% nu va genera
 soluția optimă (decât după un număr foarte mare de iterații, de multe ori
 posibilele avansuri fiind distruse la generația următoare).
 
