@@ -1,7 +1,7 @@
 module Maze.GUI (mazeGUI)
 where
 
-import qualified Array as A
+import qualified Data.Array as A
 import qualified Data.Vector as V
 
 import Control.Monad.State (when, runState, foldM_)

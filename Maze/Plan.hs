@@ -7,7 +7,7 @@ import Control.Monad.State (state, State, replicateM)
 import Data.List (sortBy)
 import System.Random (randomR, StdGen, random)
 
-import qualified Array as A
+import qualified Data.Array as A
 import qualified Data.Vector as V
 import qualified Data.Vector.Mutable as VM
 

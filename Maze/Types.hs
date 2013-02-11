@@ -1,7 +1,7 @@
 module Maze.Types
 where
 
-import Array (Array)
+import Data.Array (Array)
 import Data.Vector (Vector)
 
 {-

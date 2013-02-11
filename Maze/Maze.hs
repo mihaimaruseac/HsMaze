@@ -75,11 +75,15 @@ openCell m d (x, y) = do
   e <- readArray m (y, x)
   writeArray m (y, x) $ open e d
 
-{- Block a cell from one direction. -}
+{-
+Block a cell from one direction.
+-}
 block :: Cell -> Cardinal -> Cell
 block (C l) x = C $ filter (/= x) l
 
-{- Open a cell to one direction. -}
+{-
+Open a cell to one direction.
+-}
 open :: Cell -> Cardinal -> Cell
 open (C l) x = C $ if x `elem` l then l else x : l
 
