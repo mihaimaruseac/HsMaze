@@ -27,7 +27,7 @@ The application will also dump several informations to a file. Use
 
 The maze was generated with Sidewinder's algorithm. The maximum fitness is
 somewhere around ``100 * (n^2 - t) + 50 * t + 20 * n`` where ``n`` is the size
-of the maze and `t` is the length of the escape path.
+of the maze and ``t`` is the length of the escape path.
 
 C. Extra
 ........
