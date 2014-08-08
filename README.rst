@@ -29,3 +29,7 @@ The maze was generated with Sidewinder's algorithm. The maximum fitness is
 somewhere around ``100 * (n^2 - t) + 50 * t + 20 * n`` where ``n`` is the size
 of the maze and ``t`` is the length of the escape path.
 
+C. Extra
+........
+
+For another example of GUI (lGTK = Lens and GTK) see https://github.com/divipp/lgtk/tree/master/lgtkdemo/LGtk/Demos/Maze
